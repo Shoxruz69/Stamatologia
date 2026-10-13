@@ -10,11 +10,14 @@ import {
 import { useApp } from '../context/AppContext';
 import { colors } from '../theme/colors';
 import { Appointment, AppointmentStatus } from '../types';
-import { PlusIcon, ChevronDownIcon } from '../components/common/Icons';
+import { PlusIcon, ChevronDownIcon, CheckIcon } from '../components/common/Icons';
 import {
   getTodayDateString,
   formatNumber,
   formatCurrency,
+  formatDate,
+  toDateString,
+  UZ_MONTHS,
 } from '../utils/formatters';
 
 interface DashboardScreenProps {
@@ -23,6 +26,79 @@ interface DashboardScreenProps {
   onOpenPaymentModal: () => void;
   onViewAppointment: (apt: any) => void;
 }
+
+export interface WeekOption {
+  offset: number;
+  label: string;
+  shortLabel: string;
+  monday: Date;
+  sunday: Date;
+  startDateStr: string;
+  endDateStr: string;
+}
+
+const getMondayOfDate = (date: Date): Date => {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+};
+
+const buildWeekOption = (offset: number, baseDate: Date = new Date()): WeekOption => {
+  const currentMonday = getMondayOfDate(baseDate);
+  const targetMonday = new Date(currentMonday);
+  targetMonday.setDate(currentMonday.getDate() + offset * 7);
+
+  const targetSunday = new Date(targetMonday);
+  targetSunday.setDate(targetMonday.getDate() + 6);
+
+  const mDay = targetMonday.getDate();
+  const mMonth = UZ_MONTHS[targetMonday.getMonth()];
+  const mYear = targetMonday.getFullYear();
+
+  const sDay = targetSunday.getDate();
+  const sMonth = UZ_MONTHS[targetSunday.getMonth()];
+  const sYear = targetSunday.getFullYear();
+
+  let rangeText = '';
+  if (mYear !== sYear) {
+    rangeText = `${mDay} ${mMonth} ${mYear} – ${sDay} ${sMonth} ${sYear}`;
+  } else if (targetMonday.getMonth() !== targetSunday.getMonth()) {
+    if (mYear !== baseDate.getFullYear()) {
+      rangeText = `${mDay} ${mMonth} – ${sDay} ${sMonth} ${mYear}`;
+    } else {
+      rangeText = `${mDay} ${mMonth} – ${sDay} ${sMonth}`;
+    }
+  } else {
+    if (mYear !== baseDate.getFullYear()) {
+      rangeText = `${mDay}–${sDay} ${mMonth} ${mYear}`;
+    } else {
+      rangeText = `${mDay}–${sDay} ${mMonth}`;
+    }
+  }
+
+  let label = '';
+  if (offset === 0) {
+    label = `Bu hafta (${rangeText})`;
+  } else if (offset === -1) {
+    label = `O‘tgan hafta (${rangeText})`;
+  } else {
+    label = `${rangeText}`;
+  }
+
+  const shortLabel = offset === 0 ? 'Bu hafta' : offset === -1 ? 'O‘tgan hafta' : rangeText;
+
+  return {
+    offset,
+    label,
+    shortLabel,
+    monday: targetMonday,
+    sunday: targetSunday,
+    startDateStr: toDateString(targetMonday),
+    endDateStr: toDateString(targetSunday),
+  };
+};
 
 // Mln formatlash yordamchilari
 const formatMlnText = (amount: number): string => {
@@ -125,22 +201,35 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     return todayAppointments.slice(0, 5);
   }, [todayAppointments]);
 
-  // 4. Haftalik qabul oqimi va tushum grafigi (Haqiqiy joriy hafta)
-  const currentWeekMetrics = useMemo(() => {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMon);
+  // 4. Haftalik qabul oqimi va tushum grafigi (Tanlangan hafta bo‘yicha)
+  const [selectedWeekOffset, setSelectedWeekOffset] = useState<number>(0);
+  const [weekMenuOpen, setWeekMenuOpen] = useState<boolean>(false);
+  const [doctorWeekMenuOpen, setDoctorWeekMenuOpen] = useState<boolean>(false);
 
+  // Oxirgi 10 ta hafta variantlari
+  const weekOptions = useMemo<WeekOption[]>(() => {
+    const list: WeekOption[] = [];
+    const now = new Date();
+    for (let i = 0; i >= -9; i--) {
+      list.push(buildWeekOption(i, now));
+    }
+    return list;
+  }, []);
+
+  const activeWeek = useMemo<WeekOption>(() => {
+    return weekOptions.find((w) => w.offset === selectedWeekOffset) || weekOptions[0];
+  }, [weekOptions, selectedWeekOffset]);
+
+  const selectedWeekMetrics = useMemo(() => {
+    const monday = activeWeek.monday;
     const dayLabels = ['Du', 'Se', 'Cho', 'Pay', 'Ju', 'Sha', 'Ya'];
     const aptList: { day: string; dateStr: string; value: number }[] = [];
-    const payList: { day: string; dateStr: string; value: number }[] = [];
+    const payList: { day: string; dateStr: string; value: number; rawAmount: number }[] = [];
 
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
-      const dStr = d.toISOString().split('T')[0];
+      const dStr = toDateString(d);
 
       const aCnt = appointments.filter(
         (a) => a.date === dStr && a.status !== 'Bekor qilindi'
@@ -148,24 +237,33 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       aptList.push({ day: dayLabels[i], dateStr: dStr, value: aCnt });
 
       const pSum = payments
-        .filter((p) => p.date === dStr && p.status !== 'Qaytarilgan')
+        .filter(
+          (p) =>
+            p.date === dStr &&
+            p.status !== 'Qaytarilgan' &&
+            p.status !== 'Bekor qilingan'
+        )
         .reduce((acc, p) => acc + (p.paidAmount || 0), 0);
+
       payList.push({
         day: dayLabels[i],
         dateStr: dStr,
-        value: Math.round((pSum / 1000000) * 10) / 10,
+        value: pSum > 0 ? Math.round((pSum / 1000000) * 10) / 10 : 0,
+        rawAmount: pSum,
       });
     }
 
-    return { aptList, payList };
-  }, [appointments, payments]);
+    const totalRevenue = payList.reduce((acc, p) => acc + p.rawAmount, 0);
+
+    return { aptList, payList, totalRevenue };
+  }, [activeWeek, appointments, payments]);
 
   const [activeDayIdx, setActiveDayIdx] = useState<number>(() => {
     const d = new Date().getDay();
     return d === 0 ? 6 : d - 1;
   });
 
-  const weeklyData = currentWeekMetrics.aptList;
+  const weeklyData = selectedWeekMetrics.aptList;
   const maxWeeklyValue = Math.max(10, ...weeklyData.map((w) => w.value));
 
   // 5. Hamshira uchun: Kutish zalidagi haqiqiy bemorlar ro'yxati
@@ -371,9 +469,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     return d === 0 ? 6 : d - 1;
   });
 
-  const managerWeeklyData = currentWeekMetrics.payList;
+  const managerWeeklyData = selectedWeekMetrics.payList;
   const maxManagerWeeklyValue = Math.max(
-    5,
+    20,
     ...managerWeeklyData.map((m) => m.value)
   );
 
@@ -609,23 +707,73 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </View>
 
           {/* O'NG KARTA: HAFTALIK TUSHUM BAR CHART */}
-          <View style={[styles.panelCard, styles.flex1]}>
+          <View style={[styles.panelCard, styles.flex1, { zIndex: 30 }]}>
             <View style={styles.panelHeaderRow}>
               <View>
                 <Text style={styles.panelTitle}>Haftalik tushum</Text>
                 <Text style={styles.panelSubtitle}>
-                  Kunlar bo‘yicha tushum (mln so‘m)
+                  {selectedWeekMetrics.totalRevenue > 0
+                    ? `Kunlar bo‘yicha tushum (Jami: ${formatMlnText(selectedWeekMetrics.totalRevenue)})`
+                    : 'Kunlar bo‘yicha tushum (mln so‘m)'}
                 </Text>
               </View>
 
-              <TouchableOpacity
-                style={styles.dropdownPill}
-                onPress={() => showToast('Bu haftalik tushum statistikasi', 'info')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.dropdownPillText}>Bu hafta</Text>
-                <ChevronDownIcon size={12} color="#475569" />
-              </TouchableOpacity>
+              <View style={{ position: 'relative', zIndex: 60 }}>
+                <TouchableOpacity
+                  style={[styles.dropdownPill, weekMenuOpen && styles.dropdownPillOpen]}
+                  onPress={() => setWeekMenuOpen((prev) => !prev)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.dropdownPillText}>
+                    {activeWeek.shortLabel}
+                  </Text>
+                  <ChevronDownIcon size={12} color={weekMenuOpen ? '#0D9488' : '#475569'} />
+                </TouchableOpacity>
+
+                {weekMenuOpen && (
+                  <>
+                    <TouchableOpacity
+                      style={styles.dropdownBackdrop}
+                      onPress={() => setWeekMenuOpen(false)}
+                      activeOpacity={1}
+                    />
+                    <View style={styles.weekDropdownMenu}>
+                      <View style={styles.weekDropdownHeader}>
+                        <Text style={styles.weekDropdownHeaderText}>Haftani tanlang</Text>
+                      </View>
+                      {weekOptions.map((opt) => {
+                        const isSelected = opt.offset === selectedWeekOffset;
+                        return (
+                          <TouchableOpacity
+                            key={opt.offset}
+                            style={[
+                              styles.weekDropdownItem,
+                              isSelected && styles.weekDropdownItemActive,
+                            ]}
+                            onPress={() => {
+                              setSelectedWeekOffset(opt.offset);
+                              setWeekMenuOpen(false);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text
+                              style={[
+                                styles.weekDropdownItemText,
+                                isSelected && styles.weekDropdownItemTextActive,
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                            {isSelected && (
+                              <CheckIcon size={14} color="#0D9488" />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
+              </View>
             </View>
 
             {/* Chart */}
@@ -998,7 +1146,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </View>
 
         {/* O'NG KARTA: HAFTALIK QABUL OQIMI (BAR CHART) */}
-        <View style={[styles.panelCard, styles.flex1]}>
+        <View style={[styles.panelCard, styles.flex1, { zIndex: 30 }]}>
           <View style={styles.panelHeaderRow}>
             <View>
               <Text style={styles.panelTitle}>
@@ -1007,14 +1155,62 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <Text style={styles.panelSubtitle}>Qabul qilingan bemorlar soni</Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.dropdownPill}
-              onPress={() => showToast('Joriy hafta statistikasi', 'info')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.dropdownPillText}>Bu hafta</Text>
-              <ChevronDownIcon size={12} color="#475569" />
-            </TouchableOpacity>
+            <View style={{ position: 'relative', zIndex: 60 }}>
+              <TouchableOpacity
+                style={[styles.dropdownPill, doctorWeekMenuOpen && styles.dropdownPillOpen]}
+                onPress={() => setDoctorWeekMenuOpen((prev) => !prev)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownPillText}>
+                  {activeWeek.shortLabel}
+                </Text>
+                <ChevronDownIcon size={12} color={doctorWeekMenuOpen ? '#0D9488' : '#475569'} />
+              </TouchableOpacity>
+
+              {doctorWeekMenuOpen && (
+                <>
+                  <TouchableOpacity
+                    style={styles.dropdownBackdrop}
+                    onPress={() => setDoctorWeekMenuOpen(false)}
+                    activeOpacity={1}
+                  />
+                  <View style={styles.weekDropdownMenu}>
+                    <View style={styles.weekDropdownHeader}>
+                      <Text style={styles.weekDropdownHeaderText}>Haftani tanlang</Text>
+                    </View>
+                    {weekOptions.map((opt) => {
+                      const isSelected = opt.offset === selectedWeekOffset;
+                      return (
+                        <TouchableOpacity
+                          key={opt.offset}
+                          style={[
+                            styles.weekDropdownItem,
+                            isSelected && styles.weekDropdownItemActive,
+                          ]}
+                          onPress={() => {
+                            setSelectedWeekOffset(opt.offset);
+                            setDoctorWeekMenuOpen(false);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.weekDropdownItemText,
+                              isSelected && styles.weekDropdownItemTextActive,
+                            ]}
+                          >
+                            {opt.label}
+                          </Text>
+                          {isSelected && (
+                            <CheckIcon size={14} color="#0D9488" />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+            </View>
           </View>
 
           {/* Bar Chart Area */}
@@ -1396,18 +1592,91 @@ const styles = StyleSheet.create({
   dropdownPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     backgroundColor: '#F8FAFC',
+    // @ts-ignore
+    cursor: 'pointer',
+  },
+  dropdownPillOpen: {
+    borderColor: '#0D9488',
+    backgroundColor: '#F0FDFA',
   },
   dropdownPillText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#475569',
+    fontWeight: '700',
+    color: '#334155',
+  },
+  dropdownBackdrop: {
+    position: 'fixed' as any,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 998,
+    backgroundColor: 'transparent',
+  },
+  weekDropdownMenu: {
+    position: 'absolute',
+    top: 36,
+    right: 0,
+    width: 250,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 20,
+    zIndex: 999,
+    paddingVertical: 4,
+    maxHeight: 320,
+    overflow: 'hidden',
+  },
+  weekDropdownHeader: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
+  },
+  weekDropdownHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  weekDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+    // @ts-ignore
+    cursor: 'pointer',
+  },
+  weekDropdownItemActive: {
+    backgroundColor: '#F0FDFA',
+  },
+  weekDropdownItemText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#334155',
+    flex: 1,
+    paddingRight: 8,
+  },
+  weekDropdownItemTextActive: {
+    color: '#0D9488',
+    fontWeight: '700',
   },
 
   // Qabullar Jadvali

@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Appointment, AppointmentStatus, Patient } from '../../types';
 import { formatUzbekPhoneNumber, getTodayDateString } from '../../utils/formatters';
 import { Select } from '../common/Input';
-import { UserIcon, PlusIcon, CheckIcon, SparklesIcon } from '../common/Icons';
+import { UserIcon, PlusIcon, CheckIcon, SparklesIcon, ChevronDownIcon } from '../common/Icons';
 
 interface AppointmentModalProps {
   visible: boolean;
@@ -16,6 +16,39 @@ const TIME_SLOTS = [
   '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00',
   '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00',
 ];
+
+export const validateTime24h = (
+  val: string
+): { isValid: boolean; normalized: string; error?: string } => {
+  const trimmed = val.trim();
+  if (!trimmed) {
+    return { isValid: false, normalized: '', error: 'Qabul vaqtini kiriting' };
+  }
+
+  // Tekshirish: H:MM yoki HH:MM (masalan 9:30 yoki 09:30)
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return {
+      isValid: false,
+      normalized: trimmed,
+      error: 'Noto‘g‘ri vaqt formati. Vaqtni 24 soatlik formatda kiriting (masalan, 09:30 yoki 14:00)',
+    };
+  }
+
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return {
+      isValid: false,
+      normalized: trimmed,
+      error: 'Vaqt noto‘g‘ri: soat 00-23, daqiqa 00-59 oralig‘ida bo‘lishi kerak',
+    };
+  }
+
+  const normalized = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  return { isValid: true, normalized };
+};
 
 export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   visible,
@@ -55,6 +88,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const [serviceId, setServiceId] = useState('');
   const [date, setDate] = useState('2026-10-07');
   const [time, setTime] = useState('17:30');
+  const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
+  const timeDropdownRef = useRef<HTMLDivElement>(null);
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -89,20 +124,21 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     setErrors({});
   }, [appointmentToEdit, visible, doctors, services]);
 
-  // Tashqariga bosilganda bemor qidiruv ro'yxatini yopish
+  // Tashqariga bosilganda ochilgan ro'yxatlarni yopish
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setPatientDropdownOpen(false);
       }
+      if (timeDropdownRef.current && !timeDropdownRef.current.contains(event.target as Node)) {
+        setTimeDropdownOpen(false);
+      }
     };
-    if (patientDropdownOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    }
+    document.addEventListener('mousedown', handleOutsideClick);
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
-  }, [patientDropdownOpen]);
+  }, []);
 
   if (!visible) return null;
 
@@ -135,6 +171,17 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const handleNewPatientPhoneChange = (val: string) => {
     setNewPatientPhone(formatUzbekPhoneNumber(val));
     if (errors.newPatientPhone) setErrors((prev) => ({ ...prev, newPatientPhone: '' }));
+  };
+
+  const handleTimeBlur = () => {
+    if (!time.trim()) return;
+    const res = validateTime24h(time);
+    if (res.isValid) {
+      setTime(res.normalized);
+      if (errors.time) setErrors((prev) => ({ ...prev, time: '' }));
+    } else {
+      setErrors((prev) => ({ ...prev, time: res.error || 'Noto‘g‘ri vaqt formati' }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -174,14 +221,19 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (!date) {
       newErrors.date = 'Sanani tanlang';
     }
-    if (!time) {
-      newErrors.time = 'Vaqtni tanlang';
+
+    const timeValidation = validateTime24h(time);
+    if (!timeValidation.isValid) {
+      newErrors.time = timeValidation.error || 'Vaqtni to‘g‘ri kiriting (masalan, 09:30)';
     }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
+
+    const savedTime = timeValidation.normalized;
+    setTime(savedTime);
 
     const currentDoc = doctors.find((d) => d.id === doctorId);
     const currentSrv = services.find((s) => s.id === serviceId);
@@ -205,7 +257,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         serviceName: currentSrv ? currentSrv.name : appointmentToEdit.serviceName,
         servicePrice: currentSrv ? currentSrv.price : appointmentToEdit.servicePrice,
         date,
-        time,
+        time: savedTime,
         notes: notes.trim(),
       });
 
@@ -244,7 +296,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         serviceName: currentSrv?.name || 'Xizmat',
         servicePrice: currentSrv?.price || 0,
         date,
-        time,
+        time: savedTime,
         durationMinutes: currentSrv?.durationMinutes || 30,
         status: initialStatus,
         notes: notes.trim(),
@@ -279,7 +331,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         serviceName: currentSrv?.name || 'Xizmat',
         servicePrice: currentSrv?.price || 0,
         date,
-        time,
+        time: savedTime,
         durationMinutes: currentSrv?.durationMinutes || 30,
         status: 'Kutilmoqda',
         notes: notes.trim(),
@@ -761,23 +813,110 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               )}
             </div>
 
-            <div>
-              <Select
-                label="Vaqt"
-                required
-                value={time}
-                onValueChange={(val) => {
-                  setTime(val);
-                  if (errors.time) setErrors((prev) => ({ ...prev, time: '' }));
+            <div style={{ position: 'relative' }} ref={timeDropdownRef}>
+              <label style={labelStyle}>
+                Vaqt <span style={{ color: '#EF4444' }}>*</span>
+              </label>
+              <div
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
-                options={TIME_SLOTS.map((t) => ({
-                  label: t,
-                  value: t,
-                }))}
-                placeholder="Vaqtni tanlang..."
-                error={errors.time}
-                containerStyle={{ marginBottom: 0 }}
-              />
+              >
+                <input
+                  type="text"
+                  value={time}
+                  placeholder="09:30"
+                  maxLength={5}
+                  onChange={(e) => {
+                    setTime(e.target.value);
+                    if (errors.time) setErrors((prev) => ({ ...prev, time: '' }));
+                  }}
+                  onBlur={handleTimeBlur}
+                  style={{
+                    ...inputStyle,
+                    paddingRight: '38px',
+                    borderColor: errors.time
+                      ? '#EF4444'
+                      : timeDropdownOpen
+                      ? '#0D9488'
+                      : '#E2E8F0',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setTimeDropdownOpen((prev) => !prev)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="Vaqtni tanlash ro‘yxati"
+                >
+                  <ChevronDownIcon size={14} color={timeDropdownOpen ? '#0D9488' : '#64748B'} />
+                </button>
+              </div>
+
+              {errors.time && (
+                <div style={{ color: '#DC2626', fontSize: '12px', marginTop: '4px' }}>
+                  {errors.time}
+                </div>
+              )}
+
+              {timeDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    maxHeight: '190px',
+                    overflowY: 'auto',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F0',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                    zIndex: 60,
+                  }}
+                >
+                  {TIME_SLOTS.map((slot) => {
+                    const isSelected = slot === time;
+                    return (
+                      <div
+                        key={slot}
+                        onClick={() => {
+                          setTime(slot);
+                          setTimeDropdownOpen(false);
+                          if (errors.time) setErrors((prev) => ({ ...prev, time: '' }));
+                        }}
+                        style={{
+                          padding: '9px 14px',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          backgroundColor: isSelected ? '#F0FDFA' : '#FFFFFF',
+                          color: isSelected ? '#0D9488' : '#1E293B',
+                          fontWeight: isSelected ? 600 : 400,
+                        }}
+                      >
+                        <span>{slot}</span>
+                        {isSelected && <CheckIcon size={14} color="#0D9488" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
