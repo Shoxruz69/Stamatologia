@@ -206,11 +206,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [weekMenuOpen, setWeekMenuOpen] = useState<boolean>(false);
   const [doctorWeekMenuOpen, setDoctorWeekMenuOpen] = useState<boolean>(false);
 
-  // Oxirgi 10 ta hafta variantlari
+  // Oxirgi 52 ta hafta variantlari (butun yil bo‘ylab)
   const weekOptions = useMemo<WeekOption[]>(() => {
     const list: WeekOption[] = [];
     const now = new Date();
-    for (let i = 0; i >= -9; i--) {
+    for (let i = 0; i >= -51; i--) {
       list.push(buildWeekOption(i, now));
     }
     return list;
@@ -616,7 +616,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         {/* ============================================================ */}
         {/* 3. O'RTA QATOR: SO'NGGI TO'LOVLAR VA HAFTALIK TUSHUM        */}
         {/* ============================================================ */}
-        <View style={[styles.twoColRow, isMobile && styles.twoColRowMobile]}>
+        <View style={[styles.twoColRow, isMobile && styles.twoColRowMobile, { zIndex: weekMenuOpen ? 200 : 1 }]}>
           {/* CHAP KARTA: SO'NGGI TO'LOVLAR JADVALI */}
           <View style={[styles.panelCard, styles.flex1]}>
             <View style={styles.panelHeaderRow}>
@@ -707,8 +707,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </View>
 
           {/* O'NG KARTA: HAFTALIK TUSHUM BAR CHART */}
-          <View style={[styles.panelCard, styles.flex1, { zIndex: 30 }]}>
-            <View style={styles.panelHeaderRow}>
+          <View style={[styles.panelCard, styles.flex1, { zIndex: weekMenuOpen ? 200 : 1 }]}>
+            <View style={[styles.panelHeaderRow, { zIndex: 300 }]}>
               <View>
                 <Text style={styles.panelTitle}>Haftalik tushum</Text>
                 <Text style={styles.panelSubtitle}>
@@ -718,7 +718,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 </Text>
               </View>
 
-              <View style={{ position: 'relative', zIndex: 60 }}>
+              <View style={{ position: 'relative', zIndex: 300 }}>
                 <TouchableOpacity
                   style={[styles.dropdownPill, weekMenuOpen && styles.dropdownPillOpen]}
                   onPress={() => setWeekMenuOpen((prev) => !prev)}
@@ -741,35 +741,41 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       <View style={styles.weekDropdownHeader}>
                         <Text style={styles.weekDropdownHeaderText}>Haftani tanlang</Text>
                       </View>
-                      {weekOptions.map((opt) => {
-                        const isSelected = opt.offset === selectedWeekOffset;
-                        return (
-                          <TouchableOpacity
-                            key={opt.offset}
-                            style={[
-                              styles.weekDropdownItem,
-                              isSelected && styles.weekDropdownItemActive,
-                            ]}
-                            onPress={() => {
-                              setSelectedWeekOffset(opt.offset);
-                              setWeekMenuOpen(false);
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            <Text
+                      <ScrollView
+                        style={styles.weekDropdownScroll}
+                        nestedScrollEnabled={true}
+                        showsVerticalScrollIndicator={true}
+                      >
+                        {weekOptions.map((opt) => {
+                          const isSelected = opt.offset === selectedWeekOffset;
+                          return (
+                            <TouchableOpacity
+                              key={opt.offset}
                               style={[
-                                styles.weekDropdownItemText,
-                                isSelected && styles.weekDropdownItemTextActive,
+                                styles.weekDropdownItem,
+                                isSelected && styles.weekDropdownItemActive,
                               ]}
+                              onPress={() => {
+                                setSelectedWeekOffset(opt.offset);
+                                setWeekMenuOpen(false);
+                              }}
+                              activeOpacity={0.7}
                             >
-                              {opt.label}
-                            </Text>
-                            {isSelected && (
-                              <CheckIcon size={14} color="#0D9488" />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
+                              <Text
+                                style={[
+                                  styles.weekDropdownItemText,
+                                  isSelected && styles.weekDropdownItemTextActive,
+                                ]}
+                              >
+                                {opt.label}
+                              </Text>
+                              {isSelected && (
+                                <CheckIcon size={14} color="#0D9488" />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
                     </View>
                   </>
                 )}
@@ -839,7 +845,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         {/* ============================================================ */}
         {/* 4. PASTKI QATOR: TUSHUM VA QARZDORLIK / TOP XIZMATLAR       */}
         {/* ============================================================ */}
-        <View style={[styles.twoColRow, isMobile && styles.twoColRowMobile]}>
+        <View style={[styles.twoColRow, isMobile && styles.twoColRowMobile, { zIndex: 1 }]}>
           {/* CHAP KARTA: TUSHUM VA QARZDORLIK */}
           <View style={[styles.panelCard, styles.flex1]}>
             <View style={styles.panelHeaderRow}>
@@ -1057,7 +1063,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       {/* ============================================================ */}
       {/* 3. O'RTA QATOR: JADVAL VA HAFTALIK OQIM                       */}
       {/* ============================================================ */}
-      <View style={[styles.twoColRow, isMobile && styles.twoColRowMobile]}>
+      <View style={[styles.twoColRow, isMobile && styles.twoColRowMobile, { zIndex: doctorWeekMenuOpen ? 200 : 1 }]}>
         {/* CHAP KARTA: QABUL NAVBATI (Hamshira) / BUGUNGI QABULLAR (Shifokor) */}
         <View style={[styles.panelCard, styles.flex1]}>
           <View style={styles.panelHeaderRow}>
@@ -1146,8 +1152,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </View>
 
         {/* O'NG KARTA: HAFTALIK QABUL OQIMI (BAR CHART) */}
-        <View style={[styles.panelCard, styles.flex1, { zIndex: 30 }]}>
-          <View style={styles.panelHeaderRow}>
+        <View style={[styles.panelCard, styles.flex1, { zIndex: doctorWeekMenuOpen ? 200 : 1 }]}>
+          <View style={[styles.panelHeaderRow, { zIndex: 300 }]}>
             <View>
               <Text style={styles.panelTitle}>
                 {isNurse ? 'Haftalik qabul oqimi' : 'Haftalik tashriflar'}
@@ -1155,7 +1161,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <Text style={styles.panelSubtitle}>Qabul qilingan bemorlar soni</Text>
             </View>
 
-            <View style={{ position: 'relative', zIndex: 60 }}>
+            <View style={{ position: 'relative', zIndex: 300 }}>
               <TouchableOpacity
                 style={[styles.dropdownPill, doctorWeekMenuOpen && styles.dropdownPillOpen]}
                 onPress={() => setDoctorWeekMenuOpen((prev) => !prev)}
@@ -1178,35 +1184,41 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     <View style={styles.weekDropdownHeader}>
                       <Text style={styles.weekDropdownHeaderText}>Haftani tanlang</Text>
                     </View>
-                    {weekOptions.map((opt) => {
-                      const isSelected = opt.offset === selectedWeekOffset;
-                      return (
-                        <TouchableOpacity
-                          key={opt.offset}
-                          style={[
-                            styles.weekDropdownItem,
-                            isSelected && styles.weekDropdownItemActive,
-                          ]}
-                          onPress={() => {
-                            setSelectedWeekOffset(opt.offset);
-                            setDoctorWeekMenuOpen(false);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text
+                    <ScrollView
+                      style={styles.weekDropdownScroll}
+                      nestedScrollEnabled={true}
+                      showsVerticalScrollIndicator={true}
+                    >
+                      {weekOptions.map((opt) => {
+                        const isSelected = opt.offset === selectedWeekOffset;
+                        return (
+                          <TouchableOpacity
+                            key={opt.offset}
                             style={[
-                              styles.weekDropdownItemText,
-                              isSelected && styles.weekDropdownItemTextActive,
+                              styles.weekDropdownItem,
+                              isSelected && styles.weekDropdownItemActive,
                             ]}
+                            onPress={() => {
+                              setSelectedWeekOffset(opt.offset);
+                              setDoctorWeekMenuOpen(false);
+                            }}
+                            activeOpacity={0.7}
                           >
-                            {opt.label}
-                          </Text>
-                          {isSelected && (
-                            <CheckIcon size={14} color="#0D9488" />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
+                            <Text
+                              style={[
+                                styles.weekDropdownItemText,
+                                isSelected && styles.weekDropdownItemTextActive,
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                            {isSelected && (
+                              <CheckIcon size={14} color="#0D9488" />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
                   </View>
                 </>
               )}
@@ -1545,6 +1557,7 @@ const styles = StyleSheet.create({
   twoColRow: {
     flexDirection: 'row',
     gap: 20,
+    position: 'relative',
   },
   twoColRowMobile: {
     flexDirection: 'column',
@@ -1564,12 +1577,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
+    position: 'relative',
   },
   panelHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 16,
+    position: 'relative',
   },
   panelTitle: {
     fontSize: 17,
@@ -1622,22 +1637,26 @@ const styles = StyleSheet.create({
   },
   weekDropdownMenu: {
     position: 'absolute',
-    top: 36,
+    top: 38,
     right: 0,
-    width: 250,
+    width: 270,
+    maxWidth: 270,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 20,
-    zIndex: 999,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 35,
+    zIndex: 1000,
     paddingVertical: 4,
-    maxHeight: 320,
-    overflow: 'hidden',
+  },
+  weekDropdownScroll: {
+    maxHeight: 260,
+    // @ts-ignore
+    overflowY: 'auto',
   },
   weekDropdownHeader: {
     paddingHorizontal: 14,

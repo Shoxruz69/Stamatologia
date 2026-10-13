@@ -87,42 +87,62 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const [doctorId, setDoctorId] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [date, setDate] = useState('2026-10-07');
-  const [time, setTime] = useState('17:30');
+  const [time, setTime] = useState('09:30');
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(true);
   const timeDropdownRef = useRef<HTMLDivElement>(null);
+  const isInitializedRef = useRef(false);
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (appointmentToEdit) {
-      setSelectedPatientId(appointmentToEdit.patientId || '');
-      setSelectedPatientName(appointmentToEdit.patientName || '');
-      setPatientSearchTerm(appointmentToEdit.patientName || '');
-      setPhone(appointmentToEdit.patientPhone ? formatUzbekPhoneNumber(appointmentToEdit.patientPhone) : '');
-      setDoctorId(appointmentToEdit.doctorId || (doctors[0]?.id || ''));
-      setServiceId(appointmentToEdit.serviceId || (services[0]?.id || ''));
-      setDate(appointmentToEdit.date || '2026-10-07');
-      setTime(appointmentToEdit.time || '17:30');
-      setNotes(appointmentToEdit.notes || '');
-      setPatientMode('existing');
-    } else {
-      setSelectedPatientId('');
-      setSelectedPatientName('');
-      setPatientSearchTerm('');
-      setPhone('');
-      setNewPatientFullName('');
-      setNewPatientPhone('');
-      setNewPatientGender('Erkak');
-      setDoctorId(doctors[0]?.id || '');
-      setServiceId(services[0]?.id || '');
-      setDate(getTodayDateString());
-      setTime('09:30');
-      setNotes('');
-      setPatientMode('existing');
+  const toggleTimeDropdown = () => {
+    if (!timeDropdownOpen && timeDropdownRef.current) {
+      const rect = timeDropdownRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenUpward(spaceBelow < 230);
     }
-    setPatientDropdownOpen(false);
-    setErrors({});
-  }, [appointmentToEdit, visible, doctors, services]);
+    setTimeDropdownOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!visible) {
+      isInitializedRef.current = false;
+      return;
+    }
+
+    if (!isInitializedRef.current) {
+      if (appointmentToEdit) {
+        setSelectedPatientId(appointmentToEdit.patientId || '');
+        setSelectedPatientName(appointmentToEdit.patientName || '');
+        setPatientSearchTerm(appointmentToEdit.patientName || '');
+        setPhone(appointmentToEdit.patientPhone ? formatUzbekPhoneNumber(appointmentToEdit.patientPhone) : '');
+        setDoctorId(appointmentToEdit.doctorId || (doctors[0]?.id || ''));
+        setServiceId(appointmentToEdit.serviceId || (services[0]?.id || ''));
+        setDate(appointmentToEdit.date || getTodayDateString());
+        setTime(appointmentToEdit.time || '09:30');
+        setNotes(appointmentToEdit.notes || '');
+        setPatientMode('existing');
+      } else {
+        setSelectedPatientId('');
+        setSelectedPatientName('');
+        setPatientSearchTerm('');
+        setPhone('');
+        setNewPatientFullName('');
+        setNewPatientPhone('');
+        setNewPatientGender('Erkak');
+        setDoctorId(doctors[0]?.id || '');
+        setServiceId(services[0]?.id || '');
+        setDate(getTodayDateString());
+        setTime('09:30');
+        setNotes('');
+        setPatientMode('existing');
+      }
+      setPatientDropdownOpen(false);
+      setTimeDropdownOpen(false);
+      setErrors({});
+      isInitializedRef.current = true;
+    }
+  }, [visible, appointmentToEdit]);
 
   // Tashqariga bosilganda ochilgan ro'yxatlarni yopish
   useEffect(() => {
@@ -846,7 +866,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 />
                 <button
                   type="button"
-                  onClick={() => setTimeDropdownOpen((prev) => !prev)}
+                  onClick={toggleTimeDropdown}
                   style={{
                     position: 'absolute',
                     right: '10px',
@@ -862,7 +882,17 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   }}
                   title="Vaqtni tanlash ro‘yxati"
                 >
-                  <ChevronDownIcon size={14} color={timeDropdownOpen ? '#0D9488' : '#64748B'} />
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transform: openUpward && timeDropdownOpen ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  >
+                    <ChevronDownIcon size={14} color={timeDropdownOpen ? '#0D9488' : '#64748B'} />
+                  </span>
                 </button>
               </div>
 
@@ -876,16 +906,18 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 <div
                   style={{
                     position: 'absolute',
-                    top: 'calc(100% + 4px)',
+                    ...(openUpward
+                      ? { bottom: 'calc(100% + 6px)', top: 'auto' }
+                      : { top: 'calc(100% + 6px)', bottom: 'auto' }),
                     left: 0,
                     right: 0,
-                    maxHeight: '190px',
+                    maxHeight: '185px',
                     overflowY: 'auto',
                     backgroundColor: '#FFFFFF',
                     borderRadius: '10px',
                     border: '1px solid #E2E8F0',
-                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                    zIndex: 60,
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                    zIndex: 1000,
                   }}
                 >
                   {TIME_SLOTS.map((slot) => {

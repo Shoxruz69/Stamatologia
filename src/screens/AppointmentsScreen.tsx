@@ -474,7 +474,8 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   // Tahrirlangan qabulni kuzatish (agar sanasi o'zgarsa, ushbu sanani jadvalda ko'rsatish uchun)
   const lastEditedAptRef = useRef<{ id: string; prevDate: string } | null>(null);
 
-  // Tahrirlash oynasida sana o'zgartirilib saqlansa, jadvalni yangi sana ko'rinadigan qilib siljitish
+  // Tahrirlash oynasida sana o'zgartirilib saqlansa yoki yangi qabul qo'shilsa, jadvalni yangi sana ko'rinadigan qilib siljitish
+  const prevAppointmentsLengthRef = useRef(appointments.length);
   useEffect(() => {
     if (lastEditedAptRef.current) {
       const updatedApt = appointments.find((a) => a.id === lastEditedAptRef.current?.id);
@@ -493,7 +494,13 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
         }
       }
       lastEditedAptRef.current = null;
+    } else if (appointments.length > prevAppointmentsLengthRef.current) {
+      const newestApt = appointments[0];
+      if (newestApt && !currentThreeDays.includes(newestApt.date)) {
+        setStartDate(newestApt.date);
+      }
     }
+    prevAppointmentsLengthRef.current = appointments.length;
   }, [appointments, currentThreeDays]);
 
   // ============================================================
