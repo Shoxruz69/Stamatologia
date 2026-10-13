@@ -23,6 +23,8 @@ import {
   TelegramIcon,
   CreditCardIcon,
   CalendarIcon,
+  CloseIcon,
+  UsersIcon,
 } from '../components/common/Icons';
 
 interface PatientsScreenProps {
@@ -112,7 +114,7 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
           />
           {localSearch.length > 0 && (
             <TouchableOpacity onPress={() => setLocalSearch('')} style={styles.clearBtn}>
-              <Text style={styles.clearBtnText}>✕</Text>
+              <CloseIcon size={12} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -139,7 +141,9 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
           {/* Body */}
           {filteredPatients.length === 0 ? (
             <View style={styles.emptyWrap}>
-              <Text style={{ fontSize: 40, marginBottom: 10 }}>👥</Text>
+              <View style={{ marginBottom: 12 }}>
+                <UsersIcon size={44} color={colors.primary} />
+              </View>
               <Text style={styles.emptyTitle}>
                 {patients.length === 0 ? 'Bemorlar ro‘yxati bo‘sh' : 'Bemor topilmadi'}
               </Text>
@@ -179,9 +183,12 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
                 <View style={{ flex: 1.4 }}>
                   <Text style={styles.cellPhone}>{patient.phone}</Text>
                   {patient.telegramChatId ? (
-                    <Text style={{ fontSize: 11, color: '#0284C7', fontWeight: '600' }}>
-                      ✈️ {patient.telegramUsername || 'Telegram ulangan'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <TelegramIcon size={12} color="#0284C7" />
+                      <Text style={{ fontSize: 11, color: '#0284C7', fontWeight: '600' }}>
+                        {patient.telegramUsername || 'Telegram ulangan'}
+                      </Text>
+                    </View>
                   ) : (
                     <Text style={{ fontSize: 11, color: '#94A3B8' }}>
                       Telegram ulanmagan

@@ -27,6 +27,8 @@ import {
   EditIcon,
   LogOutIcon,
   UsersIcon,
+  AlertTriangleIcon,
+  CheckCircleIcon,
 } from '../components/common/Icons';
 import {
   getSecurityAccessCodes,
@@ -302,7 +304,7 @@ export const SettingsScreen: React.FC = () => {
                     size="sm"
                   />
                   <Text style={styles.roleBadgeText}>
-                    {currentUser?.role === 'Shifokor' ? '👨‍⚕️ Shifokor' : '💉 Hamshira (Medsestra)'}
+                    {currentUser?.role === 'Shifokor' ? 'Shifokor' : 'Hamshira (Medsestra)'}
                   </Text>
                 </View>
               </View>
@@ -804,7 +806,10 @@ export const SettingsScreen: React.FC = () => {
               </View>
               {lastSyncError && (
                 <View style={styles.dbErrorNotice}>
-                  <Text style={styles.dbErrorNoticeText}>⚠️ {lastSyncError}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <AlertTriangleIcon size={15} color="#D97706" />
+                    <Text style={styles.dbErrorNoticeText}>{lastSyncError}</Text>
+                  </View>
                 </View>
               )}
             </View>
@@ -858,7 +863,10 @@ export const SettingsScreen: React.FC = () => {
             {migrationResult && migrationResult.success && (
               <View style={styles.reconciliationBox}>
                 <View style={styles.reconciliationHeader}>
-                  <Text style={styles.reconciliationTitle}>✅ Migratsiya va Solishtirish Natijasi</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <CheckCircleIcon size={16} color="#059669" />
+                    <Text style={styles.reconciliationTitle}>Migratsiya va Solishtirish Natijasi</Text>
+                  </View>
                 </View>
                 <Text style={styles.reconciliationDesc}>
                   Lokal xotiradagi barcha yozuvlar tekshirilib, markaziy PostgreSQL bazasiga kiritildi:

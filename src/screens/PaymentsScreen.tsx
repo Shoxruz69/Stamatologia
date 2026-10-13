@@ -22,6 +22,7 @@ import {
   PrinterIcon,
   TrashIcon,
   CheckIcon,
+  CreditCardIcon,
 } from '../components/common/Icons';
 
 interface PaymentsScreenProps {
@@ -192,7 +193,9 @@ export const PaymentsScreen: React.FC<PaymentsScreenProps> = ({
           {/* Body */}
           {filteredPayments.length === 0 ? (
             <View style={styles.emptyWrap}>
-              <Text style={{ fontSize: 40, marginBottom: 10 }}>💳</Text>
+              <View style={{ marginBottom: 12 }}>
+                <CreditCardIcon size={44} color={colors.primary} />
+              </View>
               <Text style={styles.emptyTitle}>
                 {payments.length === 0 ? 'To‘lovlar tarixi bo‘sh' : 'To‘lov topilmadi'}
               </Text>

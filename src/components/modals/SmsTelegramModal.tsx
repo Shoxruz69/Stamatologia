@@ -6,7 +6,7 @@ import { Input, Select } from '../common/Input';
 import { Patient } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { colors } from '../../theme/colors';
-import { TelegramIcon, SendIcon, CheckIcon } from '../common/Icons';
+import { TelegramIcon, SendIcon, CheckIcon, FlaskIcon, AlertTriangleIcon } from '../common/Icons';
 import {
   checkTelegramStatus,
   checkPatientTelegramConnection,
@@ -271,7 +271,7 @@ export const SmsTelegramModal: React.FC<SmsTelegramModalProps> = ({
           onPress={() => setActiveTab('test')}
           activeOpacity={0.7}
         >
-          <Text style={styles.tabIcon}>🧪</Text>
+          <FlaskIcon size={16} color={activeTab === 'test' ? colors.primary : '#64748B'} />
           <Text style={[styles.tabBtnText, activeTab === 'test' && styles.tabBtnTextActive]}>
             O‘z akkauntingizga test yuborish
           </Text>
@@ -304,7 +304,10 @@ export const SmsTelegramModal: React.FC<SmsTelegramModalProps> = ({
           ) : (
             <View style={styles.unconnectedContainer}>
               <View style={styles.unconnectedHeader}>
-                <Text style={styles.unconnectedTitle}>⚠️ Telegram ulanmagan</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <AlertTriangleIcon size={18} color="#D97706" />
+                  <Text style={styles.unconnectedTitle}>Telegram ulanmagan</Text>
+                </View>
                 <Text style={styles.unconnectedSub}>
                   Qabul eslatmalarini yuborish uchun bemor botda <Text style={{ fontWeight: '700' }}>Start</Text> tugmasini bosishi kerak.
                 </Text>
@@ -387,7 +390,10 @@ export const SmsTelegramModal: React.FC<SmsTelegramModalProps> = ({
       {activeTab === 'test' && (
         <View style={styles.testSection}>
           <View style={styles.testHeaderBox}>
-            <Text style={styles.testHeaderTitle}>🧪 O‘z Telegramingizga Test Xabar Yuborish</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <FlaskIcon size={18} color="#0284C7" />
+              <Text style={styles.testHeaderTitle}>O‘z Telegramingizga Test Xabar Yuborish</Text>
+            </View>
             <Text style={styles.testHeaderSub}>
               Telegram bot ishlayotganini tekshirish uchun o‘z Telegram Chat ID raqamingizga test xabar yuborishingiz mumkin.
             </Text>
@@ -421,7 +427,8 @@ export const SmsTelegramModal: React.FC<SmsTelegramModalProps> = ({
 
           <View style={styles.testActionsRow}>
             <Button
-              title="🚀 Test Xabar Yuborish"
+              title="Test Xabar Yuborish"
+              icon={<SendIcon size={16} color="#FFFFFF" />}
               variant="primary"
               loading={isSendingTest}
               onPress={handleSendTest}

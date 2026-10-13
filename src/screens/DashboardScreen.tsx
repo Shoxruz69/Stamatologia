@@ -10,7 +10,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { colors } from '../theme/colors';
 import { Appointment, AppointmentStatus } from '../types';
-import { PlusIcon } from '../components/common/Icons';
+import { PlusIcon, ChevronDownIcon } from '../components/common/Icons';
 import {
   getTodayDateString,
   formatNumber,
@@ -623,7 +623,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 onPress={() => showToast('Bu haftalik tushum statistikasi', 'info')}
                 activeOpacity={0.7}
               >
-                <Text style={styles.dropdownPillText}>Bu hafta ⌄</Text>
+                <Text style={styles.dropdownPillText}>Bu hafta</Text>
+                <ChevronDownIcon size={12} color="#475569" />
               </TouchableOpacity>
             </View>
 
@@ -1011,7 +1012,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               onPress={() => showToast('Joriy hafta statistikasi', 'info')}
               activeOpacity={0.7}
             >
-              <Text style={styles.dropdownPillText}>Bu hafta ⌄</Text>
+              <Text style={styles.dropdownPillText}>Bu hafta</Text>
+              <ChevronDownIcon size={12} color="#475569" />
             </TouchableOpacity>
           </View>
 
@@ -1392,6 +1394,9 @@ const styles = StyleSheet.create({
     color: '#0D9488',
   },
   dropdownPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 16,

@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Appointment, AppointmentStatus, Patient } from '../../types';
 import { formatUzbekPhoneNumber, getTodayDateString } from '../../utils/formatters';
 import { Select } from '../common/Input';
+import { UserIcon, PlusIcon, CheckIcon, SparklesIcon } from '../common/Icons';
 
 interface AppointmentModalProps {
   visible: boolean;
@@ -432,7 +433,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     gap: '6px',
                   }}
                 >
-                  <span style={{ fontSize: '14px' }}>👤</span>
+                  <UserIcon size={14} color={patientMode === 'existing' ? '#FFFFFF' : '#475569'} />
                   <span>Mavjud bemorni tanlash</span>
                 </button>
 
@@ -459,7 +460,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     gap: '6px',
                   }}
                 >
-                  <span style={{ fontSize: '14px' }}>➕</span>
+                  <PlusIcon size={14} color={patientMode === 'new' ? '#FFFFFF' : '#475569'} />
                   <span>Yangi bemor qo‘shish</span>
                 </button>
               </div>
@@ -556,8 +557,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                                 </div>
                               </div>
                               {isSelected && (
-                                <span style={{ color: '#0D9488', fontWeight: 700, fontSize: '13px' }}>
-                                  ✓ Tanlandi
+                                <span style={{ color: '#0D9488', fontWeight: 700, fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <CheckIcon size={14} color="#0D9488" /> Tanlandi
                                 </span>
                               )}
                             </div>
@@ -577,8 +578,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </div>
                   )}
                   {selectedPatientId && (
-                    <div style={{ color: '#0D9488', fontSize: '12px', marginTop: '4px', fontWeight: 500 }}>
-                      ✓ Bemor biriktirildi. Telefon raqami avtomatik kiritildi.
+                    <div style={{ color: '#0D9488', fontSize: '12px', marginTop: '4px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckIcon size={14} color="#0D9488" /> Bemor biriktirildi. Telefon raqami avtomatik kiritildi.
                     </div>
                   )}
                 </div>
@@ -595,8 +596,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     gap: '10px',
                   }}
                 >
-                  <div style={{ fontSize: '12px', color: '#0D9488', fontWeight: 600 }}>
-                    ✨ Yangi bemor ma’lumotlari (saqlanganda avtomatik ro‘yxatga qo‘shiladi):
+                  <div style={{ fontSize: '12px', color: '#0D9488', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <SparklesIcon size={14} color="#0D9488" /> Yangi bemor ma’lumotlari (saqlanganda avtomatik ro‘yxatga qo‘shiladi):
                   </div>
 
                   <div>
@@ -838,9 +839,13 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   color: '#0F766E',
                   fontWeight: 500,
                   marginTop: '2px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
-                ✨ Yangi bemor uchun <b>&quot;Birlamchi konsultatsiya va ko‘rik&quot;</b> tanlandi. Qabul avtomatik ravishda <b>&quot;Jarayonda&quot;</b> statusida saqlanadi.
+                <SparklesIcon size={16} color="#0F766E" />
+                <span>Yangi bemor uchun <b>&quot;Birlamchi konsultatsiya va ko‘rik&quot;</b> tanlandi. Qabul avtomatik ravishda <b>&quot;Jarayonda&quot;</b> statusida saqlanadi.</span>
               </div>
             )
           )}

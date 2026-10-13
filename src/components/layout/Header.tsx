@@ -18,6 +18,7 @@ import {
   UsersIcon,
   CreditCardIcon,
   LockIcon,
+  CloseIcon,
 } from '../common/Icons';
 import { getRoleDefaultColor } from '../../utils/staffData';
 
@@ -132,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearchBtn}>
-              <Text style={styles.clearSearchText}>✕</Text>
+              <CloseIcon size={14} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>

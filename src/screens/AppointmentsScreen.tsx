@@ -15,6 +15,7 @@ import {
   PlusIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ArrowRightIcon,
 } from '../components/common/Icons';
 import { Select } from '../components/common/Input';
 import { Modal } from '../components/common/Modal';
@@ -800,7 +801,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                               let tagText = 'To‘lov: To‘lash kerak';
                               let isTagPaid = false;
                               if (isPaid) {
-                                tagText = 'To‘lov: To‘landi ✓';
+                                tagText = 'To‘lov: To‘landi';
                                 isTagPaid = true;
                               } else if (!hasLinkedPay && !apt.servicePrice) {
                                 tagText = 'To‘lov: Ma’lumot yo‘q';
@@ -1180,9 +1181,12 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                                 setMobileMoveTargetApt(apt);
                               }}
                             >
-                              <Text style={styles.mobileMoveBtnText}>
-                                Kunni ko‘chirish ➔
-                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Text style={styles.mobileMoveBtnText}>
+                                  Kunni ko‘chirish
+                                </Text>
+                                <ArrowRightIcon size={12} color="#0D9488" />
+                              </View>
                             </TouchableOpacity>
                           )}
                         </View>
@@ -1215,11 +1219,16 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
           <View style={styles.cardTopRow}>
             <Text style={styles.cardTimeText}>{draggingApt.time}</Text>
             <View style={styles.floatingTargetBadge}>
-              <Text style={styles.floatingTargetText}>
-                {dragOverColumnDate
-                  ? `➔ ${getDayHeaderInfo(dragOverColumnDate).weekdayUpper} (${getDayHeaderInfo(dragOverColumnDate).dayDate})`
-                  : 'Boshqa kunga sudrang'}
-              </Text>
+              {dragOverColumnDate ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <ArrowRightIcon size={11} color="#0F766E" />
+                  <Text style={styles.floatingTargetText}>
+                    {`${getDayHeaderInfo(dragOverColumnDate).weekdayUpper} (${getDayHeaderInfo(dragOverColumnDate).dayDate})`}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.floatingTargetText}>Boshqa kunga sudrang</Text>
+              )}
             </View>
           </View>
           <Text style={styles.cardPatientName}>{draggingApt.patientName}</Text>

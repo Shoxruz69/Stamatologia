@@ -19,6 +19,7 @@ import {
   SearchIcon,
   EditIcon,
   TrashIcon,
+  ToothIcon,
 } from '../components/common/Icons';
 
 interface ServicesScreenProps {
@@ -140,7 +141,9 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
           {/* Body */}
           {filteredServices.length === 0 ? (
             <View style={styles.emptyWrap}>
-              <Text style={{ fontSize: 40, marginBottom: 10 }}>🦷</Text>
+              <View style={{ marginBottom: 12 }}>
+                <ToothIcon size={44} color={colors.primary} />
+              </View>
               <Text style={styles.emptyTitle}>
                 {services.length === 0 ? 'Xizmatlar katalogi bo‘sh' : 'Xizmat topilmadi'}
               </Text>

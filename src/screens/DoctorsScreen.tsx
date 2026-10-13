@@ -234,7 +234,9 @@ export const DoctorsScreen: React.FC<DoctorsScreenProps> = ({
       <ScrollView style={styles.cardsScroll} contentContainerStyle={styles.cardsGrid}>
         {doctors.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}>👨‍⚕️</Text>
+            <View style={{ marginBottom: 16 }}>
+              <DoctorIcon size={48} color={colors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>Shifokorlar ro‘yxati bo‘sh</Text>
             <Text style={styles.emptySubtitle}>
               Klinika shifokorlarini ro‘yxatdan o‘tkazing va ularga qabullarni biriktiring.

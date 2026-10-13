@@ -141,7 +141,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentTab, setCurrentTab] = useState<NavTab>('appointments');
+  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Initial data from safety offline storage (Boshlang'ich tezkor render uchun)
@@ -884,6 +884,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const login = (user: CurrentUser) => {
     setCurrentUser(user);
     saveStoredCurrentUser(user);
+    setCurrentTab('dashboard');
     showToast(`Xush kelibsiz, ${user.name}! (${user.role})`);
   };
 

@@ -38,6 +38,11 @@ import {
   CheckIcon,
   UsersIcon,
   CloseIcon,
+  AlertTriangleIcon,
+  AlertCircleIcon,
+  BriefcaseIcon,
+  LightbulbIcon,
+  ZapIcon,
 } from '../components/common/Icons';
 
 type ViewMode = 'PIN_SCREEN' | 'REGISTER_SCREEN' | 'SETUP_SCREEN';
@@ -365,7 +370,7 @@ export const LoginScreen: React.FC = () => {
     // 1. Menejer uchun Bosh Admin maxfiy kodi tekshiruvi
     if (regRole === 'Menejer') {
       if (regSecurityCode.trim() !== currentCodes.masterAdminCode) {
-        setRegError('❌ Bosh Admin maxfiy kodi noto‘g‘ri! Faqat klinika egasi Menejer akkauntini ocha oladi.');
+        setRegError('Bosh Admin maxfiy kodi noto‘g‘ri! Faqat klinika egasi Menejer akkauntini ocha oladi.');
         return;
       }
     }
@@ -373,7 +378,7 @@ export const LoginScreen: React.FC = () => {
     // 2. Shifokor uchun ruxsat kodi tekshiruvi
     if (regRole === 'Shifokor') {
       if (regSecurityCode.trim() !== currentCodes.doctorAccessCode) {
-        setRegError('❌ Shifokorlik ruxsat kodi noto‘g‘ri! Shifokor kodini qayta tekshiring.');
+        setRegError('Shifokorlik ruxsat kodi noto‘g‘ri! Shifokor kodini qayta tekshiring.');
         return;
       }
     }
@@ -437,7 +442,10 @@ export const LoginScreen: React.FC = () => {
 
             {setupError ? (
               <View style={styles.setupErrorBox}>
-                <Text style={styles.setupErrorText}>⚠️ {setupError}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <AlertTriangleIcon size={16} color="#DC2626" />
+                  <Text style={styles.setupErrorText}>{setupError}</Text>
+                </View>
               </View>
             ) : null}
 
@@ -539,7 +547,7 @@ export const LoginScreen: React.FC = () => {
                 activeOpacity={0.85}
               >
                 <Text style={styles.setupSubmitBtnText}>
-                  {isSubmittingSetup ? 'Klinika sozlanmoqda...' : '🚀 Tizimni Ishga Tushirish'}
+                  {isSubmittingSetup ? 'Klinika sozlanmoqda...' : 'Tizimni Ishga Tushirish'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -591,12 +599,19 @@ export const LoginScreen: React.FC = () => {
                       { backgroundColor: roleColor + '20', borderColor: roleColor + '40' },
                     ]}
                   >
+                    {activeStaff.role === 'Shifokor' ? (
+                      <DoctorIcon size={12} color={roleColor} />
+                    ) : activeStaff.role === 'Medsestra' ? (
+                      <NurseIcon size={12} color={roleColor} />
+                    ) : (
+                      <BriefcaseIcon size={12} color={roleColor} />
+                    )}
                     <Text style={[styles.heroRoleText, { color: roleColor }]}>
                       {activeStaff.role === 'Shifokor'
-                        ? '🩺 Shifokor'
+                        ? 'Shifokor'
                         : activeStaff.role === 'Medsestra'
-                        ? '💉 Medsestra'
-                        : '💼 Menejer'}
+                        ? 'Medsestra'
+                        : 'Menejer'}
                     </Text>
                   </View>
                   {activeStaff.title ? (
@@ -1086,7 +1101,8 @@ export const LoginScreen: React.FC = () => {
             </View>
 
             <View style={styles.roleNoteBox}>
-              <Text style={styles.roleNoteText}>💡 {getRoleDescription(regRole)}</Text>
+              <LightbulbIcon size={14} color="#D97706" />
+              <Text style={styles.roleNoteText}>{getRoleDescription(regRole)}</Text>
             </View>
           </View>
 
@@ -1127,8 +1143,9 @@ export const LoginScreen: React.FC = () => {
                   setRegError(null);
                 }}
               >
+                <ZapIcon size={12} color="#1D4ED8" />
                 <Text style={styles.quickCodeBadgeText}>
-                  ⚡ Demo Master-kod: {getSecurityAccessCodes().masterAdminCode} (Kiritish)
+                  Demo Master-kod: {getSecurityAccessCodes().masterAdminCode} (Kiritish)
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1170,8 +1187,9 @@ export const LoginScreen: React.FC = () => {
                   setRegError(null);
                 }}
               >
+                <ZapIcon size={12} color="#0F766E" />
                 <Text style={[styles.quickCodeBadgeText, { color: '#0F766E' }]}>
-                  ⚡ Demo Shifokor kodi: {getSecurityAccessCodes().doctorAccessCode} (Kiritish)
+                  Demo Shifokor kodi: {getSecurityAccessCodes().doctorAccessCode} (Kiritish)
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1254,7 +1272,10 @@ export const LoginScreen: React.FC = () => {
           {/* Xatolik xabari */}
           {regError && (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{regError}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <AlertCircleIcon size={16} color="#DC2626" />
+                <Text style={styles.errorText}>{regError}</Text>
+              </View>
             </View>
           )}
 
@@ -1393,6 +1414,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   heroRolePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -1716,6 +1740,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   roleNoteText: {
     fontSize: 11,
@@ -1837,6 +1864,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BFDBFE',
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   quickCodeBadgeText: {
     fontSize: 11,

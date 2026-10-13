@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Svg, { Rect, Line, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { colors } from '../../theme/colors';
+import { AnalyticsIcon } from '../common/Icons';
 import { formatCurrency, formatNumber } from '../../utils/formatters';
 
 interface RevenueDataPoint {
@@ -41,7 +42,9 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           </View>
         </View>
         <View style={{ height: 180, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 24, marginBottom: 8 }}>📊</Text>
+          <View style={{ marginBottom: 8 }}>
+            <AnalyticsIcon size={32} color={colors.textMuted} />
+          </View>
           <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: '600' }}>
             Tanlangan muddatda tushumlar mavjud emas (0 so‘m)
           </Text>

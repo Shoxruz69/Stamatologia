@@ -15,6 +15,7 @@ import {
   CreditCardIcon,
   PlusIcon,
   CheckIcon,
+  LinkIcon,
 } from '../common/Icons';
 
 interface PatientDetailModalProps {
@@ -120,7 +121,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
       footer={
         <View style={styles.footerRow}>
           <Button
-            title={targetPatient.telegramChatId ? "Telegram eslatma" : "🔗 Telegramni ulash"}
+            title={targetPatient.telegramChatId ? "Telegram eslatma" : "Telegramni ulash"}
             variant="outline"
             icon={<TelegramIcon size={16} color={targetPatient.telegramChatId ? "#0284C7" : "#0D9488"} />}
             onPress={() => {
@@ -227,14 +228,17 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
           }}
           activeOpacity={0.8}
         >
-          <Text
-            style={[
-              styles.telegramBarBtnText,
-              targetPatient.telegramChatId ? { color: '#0284C7' } : { color: '#FFFFFF' },
-            ]}
-          >
-            {targetPatient.telegramChatId ? 'Xabar yuborish' : '🔗 Telegramni ulash'}
-          </Text>
+            {!targetPatient.telegramChatId && (
+              <LinkIcon size={13} color="#FFFFFF" />
+            )}
+            <Text
+              style={[
+                styles.telegramBarBtnText,
+                targetPatient.telegramChatId ? { color: '#0284C7' } : { color: '#FFFFFF' },
+              ]}
+            >
+              {targetPatient.telegramChatId ? 'Xabar yuborish' : 'Telegramni ulash'}
+            </Text>
         </TouchableOpacity>
       </View>
 
@@ -299,14 +303,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                     <View style={styles.linkedPayRow}>
                       {linkedPayment.status === 'To‘lash kerak' ? (
                         <View style={styles.payStatusTagPending}>
+                          <CreditCardIcon size={13} color="#B45309" />
                           <Text style={styles.payStatusTextPending}>
-                            💳 To‘lov: To‘lash kerak ({formatCurrency(linkedPayment.debtAmount)})
+                            To‘lov: To‘lash kerak ({formatCurrency(linkedPayment.debtAmount)})
                           </Text>
                         </View>
                       ) : (
                         <View style={styles.payStatusTagPaid}>
+                          <CheckIcon size={13} color="#065F46" />
                           <Text style={styles.payStatusTextPaid}>
-                            ✓ To‘lov: {linkedPayment.status} ({formatCurrency(linkedPayment.paidAmount)})
+                            To‘lov: {linkedPayment.status} ({formatCurrency(linkedPayment.paidAmount)})
                           </Text>
                         </View>
                       )}
@@ -330,8 +336,9 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                             style={styles.btnQuickPay}
                             onPress={() => completePayment(linkedPayment.id)}
                           >
+                            <CheckIcon size={13} color="#FFFFFF" />
                             <Text style={styles.btnQuickPayText}>
-                              ✓ To‘lash ({formatCurrency(linkedPayment.debtAmount)})
+                              To‘lash ({formatCurrency(linkedPayment.debtAmount)})
                             </Text>
                           </TouchableOpacity>
                         )}
@@ -629,6 +636,9 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   payStatusTextPending: {
     fontSize: 12,
@@ -642,6 +652,9 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   payStatusTextPaid: {
     fontSize: 12,
@@ -683,6 +696,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   btnQuickPayText: {
     fontSize: 12,

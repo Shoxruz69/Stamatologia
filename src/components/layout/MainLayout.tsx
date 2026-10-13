@@ -35,6 +35,7 @@ import { SmsTelegramModal } from '../modals/SmsTelegramModal';
 // Toast
 import { ToastContainer } from '../common/Toast';
 import { ErrorBoundary } from '../common/ErrorBoundary';
+import { AlertTriangleIcon } from '../common/Icons';
 import { Appointment, Doctor, Patient, Payment, Service } from '../../types';
 
 export const MainLayout: React.FC = () => {
@@ -62,7 +63,7 @@ export const MainLayout: React.FC = () => {
       currentUser?.role !== 'Menejer' &&
       ['payments', 'analytics', 'reports'].includes(currentTab)
     ) {
-      setCurrentTab('appointments');
+      setCurrentTab('dashboard');
     }
   }, [currentTab, currentUser]);
 
@@ -272,7 +273,7 @@ export const MainLayout: React.FC = () => {
           {lastSyncError && (
             <View style={styles.syncAlertBanner}>
               <View style={styles.syncAlertLeft}>
-                <Text style={styles.syncAlertIcon}>⚠️</Text>
+                <AlertTriangleIcon size={18} color="#D97706" />
                 <View style={styles.syncAlertTextCol}>
                   <Text style={styles.syncAlertTitle}>
                     {serverStatus === 'offline'
