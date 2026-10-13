@@ -1,0 +1,25 @@
+server/data/postgres_db/
+server/backups/
+server/clinicData.json
+server/telegramConnections.json
+# Dependencies
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+sms-config.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db

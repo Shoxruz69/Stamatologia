@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # ===================================================================
+  # 1. PostgreSQL 16 Ma'lumotlar Bazasi
+  # ===================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: dentacare-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${PGDATABASE:-dentacare}
+      POSTGRES_USER: ${PGUSER:-postgres}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-postgres}
+    ports:
+      - "${PGPORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./server/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-postgres} -d ${PGDATABASE:-dentacare}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ===================================================================
+  # 2. DentaCare Node.js Backend API Server (Ixtiyoriy konteyner)
+  # ===================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dentacare-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://${PGUSER:-postgres}:${PGPASSWORD:-postgres}@postgres:5432/${PGDATABASE:-dentacare}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      ESKIZ_EMAIL: ${ESKIZ_EMAIL:-}
+      ESKIZ_PASSWORD: ${ESKIZ_PASSWORD:-}
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+    driver: local

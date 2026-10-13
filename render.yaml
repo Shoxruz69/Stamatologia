@@ -1,0 +1,37 @@
+services:
+  # ===================================================================
+  # 1. DentaCare Markaziy Web Service (Backend API + Frontend SPA)
+  # ===================================================================
+  - type: web
+    name: dentacare-app
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npm run build:web
+    startCommand: node serve-web.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dentacare-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ESKIZ_EMAIL
+        sync: false
+      - key: ESKIZ_PASSWORD
+        sync: false
+
+databases:
+  # ===================================================================
+  # 2. Doimiy Render Managed PostgreSQL Ma'lumotlar Bazasi
+  # ===================================================================
+  - name: dentacare-db
+    databaseName: dentacare
+    user: dentacare_user
+    plan: free
+    region: frankfurt

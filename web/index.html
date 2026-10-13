@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="uz">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1.00001, viewport-fit=cover" />
+    <title>DentaCare - Zamonaviy Stomatologiya Admin Paneli</title>
+    <meta name="description" content="Stomatologiya klinikasi uchun to‘liq o‘zbek tilidagi professional admin paneli - qabullar, bemorlar, to‘lovlar va savdo tahlili" />
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      html, body, #root {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #FFFFFF;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* Custom scrollbars */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #F1F5F9;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #CBD5E1;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94A3B8;
+      }
+
+      /* ============================================================ */
+      /* FOKUS DIZAYNI: Standart qora chiziqni olib tashlash va        */
+      /* yupqa turkuaz chegara va yengil turkuaz soya qo'llash        */
+      /* ============================================================ */
+
+      *, *::before, *::after {
+        -webkit-tap-highlight-color: transparent;
+        box-sizing: border-box;
+      }
+
+      input, select, textarea, button {
+        box-sizing: border-box !important;
+      }
+
+      /* Barcha elementlardan brauzerning standart qora / to'q hoshiyasini yo'qotish */
+      input, textarea, select, [contenteditable="true"], [tabindex] {
+        outline: none !important;
+        outline-width: 0 !important;
+        outline-style: none !important;
+        outline-color: transparent !important;
+      }
+
+      input:focus, textarea:focus, select:focus, [contenteditable="true"]:focus,
+      input:focus-visible, textarea:focus-visible, select:focus-visible, [contenteditable="true"]:focus-visible {
+        outline: none !important;
+        outline-width: 0 !important;
+        outline-style: none !important;
+        outline-color: transparent !important;
+      }
+
+      /* Konteyner ichidagi TextInput elementlaridan qora chegara va foni olib tashlash */
+      [data-inner-input="true"],
+      [data-inner-input="true"]:focus,
+      [data-inner-input="true"]:focus-visible {
+        outline: none !important;
+        outline-width: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background-color: transparent !important;
+      }
+
+      /* Maxsus input konteyneri (masalan, Input.tsx yoki Header search) fokuslanganda */
+      [data-input-container="true"]:focus-within {
+        border-color: #0D9488 !important;
+        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18) !important;
+      }
+
+      /* Barcha mustaqil input, select, textarea lar fokus holatida */
+      select:focus,
+      select:focus-visible,
+      textarea:focus,
+      textarea:focus-visible,
+      input[type="date"]:focus,
+      input[type="date"]:focus-visible,
+      input:focus:not([data-inner-input="true"]),
+      input:focus-visible:not([data-inner-input="true"]) {
+        outline: none !important;
+        outline-width: 0 !important;
+        border-color: #0D9488 !important;
+        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18) !important;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <div style="padding: 24px; text-align: center; font-family: sans-serif;">
+        Ushbu admin paneldan foydalanish uchun brauzeringizda JavaScript faol bo‘lishi lozim.
+      </div>
+    </noscript>
+    <div id="root"></div>
+  </body>
+</html>
