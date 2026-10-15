@@ -320,4 +320,49 @@ server.listen(PORT, '0.0.0.0', async () => {
       console.log(`Telegram Bot holati:`, info.message);
     }
   });
+
+  // Render 24/7 uyg'oq saqlash xizmati
+  initRenderKeepAlive();
 });
+
+// ========================================================
+// 6. RENDER 24/7 UYG'OQ SAQLASH (KEEP-ALIVE SERVICE)
+// ========================================================
+function initRenderKeepAlive() {
+  const externalUrl = process.env.RENDER_EXTERNAL_URL || 'https://dentacare-app.onrender.com';
+  // Render bepul tarifida 15 daqiqa (900s) harakatsizlikdan so'ng uxlaydi.
+  // Har 10 daqiqada (600s) o'ziga tashqi HTTPS so'rov yuborib, uxlash taymerini doim nollab turamiz.
+  const INTERVAL_MS = 10 * 60 * 1000;
+
+  console.log(`[KeepAlive] 24/7 uyg‘oq saqlash xizmati ishga tushdi: ${externalUrl}`);
+
+  // Dastlabki ping 30 soniyadan so'ng, keyin har 10 daqiqada
+  setTimeout(pingSelf, 30 * 1000);
+  setInterval(pingSelf, INTERVAL_MS);
+
+  function pingSelf() {
+    try {
+      const targetUrl = `${externalUrl.replace(/\/$/, '')}/api/health`;
+      const client = targetUrl.startsWith('https') ? require('https') : require('http');
+
+      const pingReq = client.get(targetUrl, { timeout: 25000 }, (res) => {
+        let rawData = '';
+        res.on('data', (c) => rawData += c);
+        res.on('end', () => {
+          console.log(`[KeepAlive] ${new Date().toLocaleTimeString('uz-UZ')} - Render 24/7 ping holati: ${res.statusCode} OK`);
+        });
+      });
+
+      pingReq.on('error', (err) => {
+        console.warn(`[KeepAlive] Ping xabari (${targetUrl}): ${err.message}`);
+      });
+
+      pingReq.on('timeout', () => {
+        pingReq.destroy();
+        console.warn(`[KeepAlive] Ping timeout bo'ldi (${targetUrl})`);
+      });
+    } catch (e) {
+      console.warn(`[KeepAlive] Ping jo'natishda xatolik:`, e.message);
+    }
+  }
+}

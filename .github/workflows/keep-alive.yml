@@ -1,0 +1,17 @@
+name: Render 24/7 Keep-Alive
+
+on:
+  schedule:
+    # Har 10 daqiqada Render serveriga tashqi so'rov yuborib turadi
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Render Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render App
+        run: |
+          echo "Pinging https://dentacare-app.onrender.com/api/health..."
+          curl -s -f -m 30 "https://dentacare-app.onrender.com/api/health" || curl -s -m 30 "https://dentacare-app.onrender.com/" || echo "Ping request sent"
