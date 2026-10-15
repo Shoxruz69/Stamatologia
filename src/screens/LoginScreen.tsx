@@ -8,6 +8,7 @@ import {
   ScrollView,
   Platform,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors } from '../theme/colors';
@@ -55,6 +56,8 @@ const SHOW_SWITCH_STAFF_BUTTON = false;
 
 export const LoginScreen: React.FC = () => {
   const { login, showToast } = useApp();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
 
   // Oyna holati: 'PIN_SCREEN' | 'SETUP_SCREEN' | 'REGISTER_SCREEN'
   const [viewMode, setViewMode] = useState<ViewMode>('PIN_SCREEN');
@@ -208,6 +211,7 @@ export const LoginScreen: React.FC = () => {
         const currentPin = pinRef.current;
         if (currentPin.length < 4) {
           const nextPin = currentPin + e.key;
+          pinRef.current = nextPin;
           setPin(nextPin);
           setPinError(null);
           if (nextPin.length === 4) {
@@ -216,10 +220,13 @@ export const LoginScreen: React.FC = () => {
         }
       } else if (e.key === 'Backspace') {
         e.preventDefault();
-        setPin((prev) => prev.slice(0, -1));
+        const nextPin = pinRef.current.slice(0, -1);
+        pinRef.current = nextPin;
+        setPin(nextPin);
         setPinError(null);
       } else if (e.key === 'Delete' || e.key === 'Escape') {
         e.preventDefault();
+        pinRef.current = '';
         setPin('');
         setPinError(null);
       } else if (e.key === 'Enter') {
@@ -560,9 +567,189 @@ export const LoginScreen: React.FC = () => {
   // =========================================================================
   // 1-OYNA: PAROL (4 XONALI PIN) OYNASI (ASOSIY TEZKOR KIRISH)
   // =========================================================================
-  if (viewMode === 'PIN_SCREEN' && activeStaff) {
-    const roleColor = getRoleDefaultColor(activeStaff.role);
+  if (viewMode === 'PIN_SCREEN') {
+    const currentStaff = activeStaff || {
+      id: 'manager-1',
+      name: 'Shoxruz',
+      role: 'Menejer' as StaffRole,
+      avatar: 'SH',
+      avatarColor: '#2563EB',
+      title: 'Klinika rahbari',
+      pin: '',
+    };
+    const roleColor = getRoleDefaultColor(currentStaff.role);
 
+    // =========================================================================
+    // KOMPYUTER / DESKTOP KO'RINISHI (Markazlashgan oyna, tugmalarsiz, klaviatura)
+    // =========================================================================
+    if (isDesktop) {
+      return (
+        <View style={styles.desktopContainer}>
+          {/* Orqa fondagi ambient doiralar (faqat estetik fon uchun) */}
+          <View style={styles.ambientCircleBottomLeft} pointerEvents="none" />
+          <View style={styles.ambientCircleTopRight} pointerEvents="none" />
+
+          {/* Ekranning qoq o'rtasidagi asosiy oyna */}
+          <View style={styles.desktopPinCard}>
+            {/* Logo va Klinika nomi (Horizontal qator) */}
+            <View style={styles.desktopLogoRow}>
+              <View style={styles.desktopLogoBadge}>
+                <ToothIcon size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.desktopBrandTitle}>DentaCare</Text>
+            </View>
+            <Text style={styles.desktopBrandSubtitle}>Stomatologiya boshqaruv tizimi</Text>
+
+            {/* ESLAB QOLINGAN XODIMNING KARTASI (Shoxruz profili) */}
+            <View style={styles.desktopUserCard}>
+              <View style={styles.desktopUserLeft}>
+                <View
+                  style={[
+                    styles.desktopAvatar,
+                    { backgroundColor: currentStaff.avatarColor || '#2563EB' },
+                  ]}
+                >
+                  <Text style={styles.desktopAvatarText}>
+                    {currentStaff.avatar || (currentStaff.name ? currentStaff.name.slice(0, 2).toUpperCase() : 'SH')}
+                  </Text>
+                </View>
+                <View style={styles.desktopUserInfo}>
+                  <Text style={styles.desktopUserName}>{currentStaff.name || 'Shoxruz'}</Text>
+                  <Text style={styles.desktopUserSub}>
+                    {currentStaff.title ||
+                      (currentStaff.role === 'Menejer'
+                        ? 'Klinika rahbari'
+                        : currentStaff.role === 'Shifokor'
+                        ? 'Stomatolog-shifokor'
+                        : 'Hamshira')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Status nishoni (Menejer) */}
+              <View style={styles.desktopRoleBadge}>
+                <View style={styles.desktopRoleDot} />
+                <Text style={styles.desktopRoleText}>
+                  {currentStaff.role ? currentStaff.role.toUpperCase() : 'MENEJER'}
+                </Text>
+              </View>
+            </View>
+
+            {/* PIN SOHASI */}
+            <View style={styles.desktopPinSection}>
+              <Text style={styles.desktopPinTitle}>4 xonali PIN-kod</Text>
+              <Text style={styles.desktopPinSubtitle}>PIN-kodni klaviaturada kiriting</Text>
+
+              {/* 4 ta PIN katagi */}
+              <TouchableOpacity
+                style={styles.desktopPinBoxesRow}
+                activeOpacity={1}
+                onPress={() => hiddenInputRef.current?.focus()}
+              >
+                {[0, 1, 2, 3].map((index) => {
+                  const digit = pin[index];
+                  const isActiveSlot = pin.length === index;
+                  const isFilled = digit !== undefined;
+
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.desktopPinBox,
+                        isActiveSlot && styles.desktopPinBoxActive,
+                        isFilled && styles.desktopPinBoxFilled,
+                        pinError ? styles.desktopPinBoxError : null,
+                      ]}
+                    >
+                      {isFilled ? (
+                        showPin ? (
+                          <Text style={styles.desktopPinDigitText}>{digit}</Text>
+                        ) : (
+                          <View
+                            style={[
+                              styles.desktopPinDotFilled,
+                              pinError ? { backgroundColor: colors.danger } : null,
+                            ]}
+                          />
+                        )
+                      ) : (
+                        <View style={styles.desktopPinDotEmpty} />
+                      )}
+                    </View>
+                  );
+                })}
+
+                {/* Shaffof kiritish maydoni */}
+                <TextInput
+                  ref={hiddenInputRef}
+                  style={styles.transparentInputOverlay}
+                  keyboardType="number-pad"
+                  // @ts-ignore
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={4}
+                  value={pin}
+                  onChangeText={(text) => {
+                    const numeric = text.replace(/[^0-9]/g, '').slice(0, 4);
+                    pinRef.current = numeric;
+                    setPin(numeric);
+                    setPinError(null);
+                    if (numeric.length === 4) {
+                      verifyPinAndLogin(numeric);
+                    }
+                  }}
+                  onSubmitEditing={() => verifyPinAndLogin(pinRef.current)}
+                  autoFocus={Platform.OS === 'web'}
+                />
+              </TouchableOpacity>
+
+              {/* Ko'rsatish tugmasi */}
+              <View style={styles.desktopShowRow}>
+                <TouchableOpacity
+                  style={styles.desktopShowBtn}
+                  onPress={() => setShowPin(!showPin)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.desktopShowText}>
+                    {showPin ? 'Yashirish' : 'Ko‘rsatish'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Xatolik xabari */}
+              {pinError && (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{pinError}</Text>
+                </View>
+              )}
+
+              {/* Tizimga kirish tugmasi */}
+              <TouchableOpacity
+                style={[
+                  styles.desktopSubmitBtn,
+                  isSuccess && { backgroundColor: '#10B981' },
+                ]}
+                onPress={() => verifyPinAndLogin()}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.desktopSubmitBtnText}>
+                  {isSuccess ? 'Tasdiqlandi! Kirilmoqda...' : 'Tizimga kirish'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Pastki yordamchi matn */}
+              <Text style={styles.desktopHelperText}>
+                PIN-kodni raqamlar bilan yozing, alohida tugmalar kerak emas
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // =========================================================================
+    // TELEFON / MOBILE KO'RINISHI (AVVALGI HOLAT VA ISHLASH TARTIBI SAQLANGAN)
+    // =========================================================================
     return (
       <View style={styles.container}>
         <ScrollView
@@ -2095,4 +2282,249 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+
+  // =========================================================================
+  // DESKTOP / KOMPYUTER EKRANI STYLES (Mockup asosida)
+  // =========================================================================
+  desktopContainer: {
+    flex: 1,
+    backgroundColor: '#071524',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    position: 'relative',
+    overflow: 'hidden',
+    // @ts-ignore
+    minHeight: '100vh',
+    width: '100%',
+  },
+  ambientCircleBottomLeft: {
+    position: 'absolute',
+    bottom: -160,
+    left: -160,
+    width: 500,
+    height: 500,
+    borderRadius: 250,
+    backgroundColor: '#0D2744',
+    opacity: 0.6,
+  },
+  ambientCircleTopRight: {
+    position: 'absolute',
+    top: -160,
+    right: -160,
+    width: 460,
+    height: 460,
+    borderRadius: 230,
+    backgroundColor: '#0D2744',
+    opacity: 0.5,
+  },
+  desktopPinCard: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 44,
+    paddingVertical: 38,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 25 },
+    shadowOpacity: 0.35,
+    shadowRadius: 50,
+    elevation: 20,
+  },
+  desktopLogoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  desktopLogoBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopBrandTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  desktopBrandSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  desktopUserCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 24,
+  },
+  desktopUserLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  desktopAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  desktopUserInfo: {
+    justifyContent: 'center',
+  },
+  desktopUserName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  desktopUserSub: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  desktopRoleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E6F9F0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  desktopRoleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#0D9488',
+  },
+  desktopRoleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0D9488',
+    letterSpacing: 0.5,
+  },
+  desktopPinSection: {
+    width: '100%',
+  },
+  desktopPinTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  desktopPinSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 16,
+  },
+  desktopPinBoxesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    position: 'relative',
+    marginBottom: 8,
+    width: '100%',
+  },
+  desktopPinBox: {
+    flex: 1,
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopPinBoxActive: {
+    borderColor: '#0D9488',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#0D9488',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  desktopPinBoxFilled: {
+    borderColor: '#0D9488',
+    backgroundColor: '#FFFFFF',
+  },
+  desktopPinBoxError: {
+    borderColor: colors.danger,
+    backgroundColor: '#FEF2F2',
+  },
+  desktopPinDotFilled: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#2563EB',
+  },
+  desktopPinDotEmpty: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#CBD5E1',
+  },
+  desktopPinDigitText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  desktopShowRow: {
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  desktopShowBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  desktopShowText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  desktopSubmitBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
+  },
+  desktopSubmitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  desktopHelperText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 22,
+  },
 });
+
