@@ -56,7 +56,13 @@ export const getStoredStaffMembers = (): StaffMember[] => {
     if (typeof window !== 'undefined' && window.localStorage) {
       const saved = window.localStorage.getItem(STORAGE_KEY_STAFF);
       if (saved) {
-        return JSON.parse(saved);
+        const list = JSON.parse(saved);
+        if (Array.isArray(list)) {
+          return list.map((s) => ({
+            ...s,
+            avatar: generateAvatarInitials(s.name),
+          }));
+        }
       }
     }
   } catch (err) {
@@ -104,16 +110,17 @@ export const updateStaffMember = (
   const staff = getStoredStaffMembers();
   const idx = staff.findIndex((s) => s.id === staffId);
   if (idx !== -1) {
-    const updated = { ...staff[idx], ...updates };
-    if (updates.name) {
-      updated.avatar = generateAvatarInitials(updates.name);
-    }
+    const updated = {
+      ...staff[idx],
+      ...updates,
+      avatar: updates.name ? generateAvatarInitials(updates.name) : (updates.avatar || generateAvatarInitials(staff[idx].name)),
+    };
     staff[idx] = updated;
     saveStaffMembersToStorage(staff);
 
     // Eslab qolingan xodimni ham yangilash
     const remembered = getRememberedStaff();
-    if (remembered && remembered.id === staffId) {
+    if (remembered && (remembered.id === staffId || remembered.role === 'Menejer')) {
       setRememberedStaff(updated);
     }
     return true;
@@ -147,17 +154,21 @@ export const addNewStaffMember = (
   return newMember;
 };
 
-// Ismdan avatar initsiallarini generatsiya qilish
-export const generateAvatarInitials = (name: string): string => {
+// Ismdan avatar initsiallarini generatsiya qilish (Masalan: "Bobur" -> "B", "Bobur Mansurov" -> "BM", "Shoxruz" -> "S")
+export const generateAvatarInitials = (name?: string): string => {
+  if (!name || typeof name !== 'string') return 'M';
   const clean = name.replace(/^Dr\.\s*/i, '').trim();
+  if (!clean) return 'M';
   const parts = clean.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
+    // Masalan: "Bobur Mansurov" -> "BM"
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
-  if (parts.length === 1 && parts[0].length >= 2) {
-    return parts[0].slice(0, 2).toUpperCase();
+  if (parts.length === 1 && parts[0].length >= 1) {
+    // Masalan: "Bobur" -> "B", "Shoxruz" -> "S"
+    return parts[0][0].toUpperCase();
   }
-  return 'DC';
+  return 'M';
 };
 
 // Rol uchun mos ranglar
@@ -205,7 +216,11 @@ export const getStoredCurrentUser = (): CurrentUser | null => {
     if (typeof window !== 'undefined' && window.sessionStorage) {
       const data = window.sessionStorage.getItem(STORAGE_KEY_CURRENT_USER);
       if (data) {
-        return JSON.parse(data) as CurrentUser;
+        const u = JSON.parse(data) as CurrentUser;
+        if (u && u.name) {
+          u.avatar = generateAvatarInitials(u.name);
+        }
+        return u;
       }
     }
   } catch (err) {
@@ -251,7 +266,13 @@ export const getRememberedStaff = (): StaffMember | null => {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.id) {
           const fresh = allStaff.find((s) => s.id === parsed.id);
-          if (fresh) return fresh;
+          if (fresh) {
+            fresh.avatar = generateAvatarInitials(fresh.name);
+            return fresh;
+          }
+        }
+        if (parsed && parsed.name) {
+          parsed.avatar = generateAvatarInitials(parsed.name);
         }
         return parsed;
       }
@@ -260,13 +281,25 @@ export const getRememberedStaff = (): StaffMember | null => {
     console.warn('Remembered staff o‘qishda xatolik:', err);
   }
   const manager = allStaff.find((s) => s.role === 'Menejer');
-  return manager || allStaff[0] || null;
+  if (manager) {
+    manager.avatar = generateAvatarInitials(manager.name);
+    return manager;
+  }
+  if (allStaff[0]) {
+    allStaff[0].avatar = generateAvatarInitials(allStaff[0].name);
+    return allStaff[0];
+  }
+  return null;
 };
 
 export const setRememberedStaff = (staff: StaffMember) => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(STORAGE_KEY_REMEMBERED_STAFF, JSON.stringify(staff));
+      const toSave = {
+        ...staff,
+        avatar: generateAvatarInitials(staff.name),
+      };
+      window.localStorage.setItem(STORAGE_KEY_REMEMBERED_STAFF, JSON.stringify(toSave));
     }
   } catch (err) {
     console.warn('Remembered staff saqlashda xatolik:', err);

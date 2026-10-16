@@ -7,7 +7,8 @@
     "dev": "expo start --web",
     "web": "expo start --web",
     "expo:start": "expo start",
-    "build:web": "expo export -p web"
+    "build:web": "expo export -p web",
+    "push": "git add -A && git commit -m \"feat: dynamic manager avatar and name synchronization\" && git push origin main"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.9",

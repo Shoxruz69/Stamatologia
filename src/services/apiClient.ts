@@ -186,6 +186,14 @@ export const apiClient = {
     return res.staff;
   },
 
+  updateStaff: async (id: string, staffData: Partial<StaffMember>): Promise<StaffMember> => {
+    const res = await request<{ ok: true; staff: StaffMember }>(`/api/staff/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(staffData),
+    });
+    return res.staff;
+  },
+
   // 4. Xizmatlar
   getServices: async (): Promise<Service[]> => {
     const res = await request<{ ok: true; services: Service[] }>('/api/services');

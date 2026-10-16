@@ -29,6 +29,7 @@ import {
   getRememberedStaff,
   setRememberedStaff,
   saveStaffMembersToStorage,
+  generateAvatarInitials,
 } from '../utils/staffData';
 import { getPresetDates } from '../utils/formatters';
 import { ToastMessage } from '../components/common/Toast';
@@ -890,22 +891,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateCurrentUser = (updates: Partial<CurrentUser>) => {
     if (!currentUser) return;
-    const updated: CurrentUser = { ...currentUser, ...updates };
+    const nextName = updates.name !== undefined ? updates.name.trim() : currentUser.name;
+    const nextAvatar = nextName ? generateAvatarInitials(nextName) : (updates.avatar || currentUser.avatar);
+    const updated: CurrentUser = {
+      ...currentUser,
+      ...updates,
+      name: nextName,
+      avatar: nextAvatar,
+    };
     setCurrentUser(updated);
     saveStoredCurrentUser(updated);
     updateStaffMember(updated.id, {
       name: updated.name,
+      avatar: nextAvatar,
       pin: updated.pin,
       title: updated.title,
     });
     const remembered = getRememberedStaff();
-    if (remembered && remembered.id === updated.id) {
+    if (remembered && (remembered.id === updated.id || remembered.role === 'Menejer')) {
       setRememberedStaff({
         ...remembered,
         name: updated.name,
+        avatar: nextAvatar,
         pin: updated.pin || remembered.pin,
       });
     }
+
+    // Backend PostgreSQL ga ham yangilanishni yuborish
+    apiClient.updateStaff(updated.id, {
+      name: updated.name,
+      avatar: nextAvatar,
+      title: updated.title,
+      pin: updated.pin,
+    }).catch(() => {});
 
     if (updated.pin) {
       apiClient.updatePin(updated.id, updated.pin).catch(() => {});

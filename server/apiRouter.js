@@ -122,8 +122,8 @@ async function handleApiRequest(req, res, pathname, queryParams) {
       const cleanClinicName = (clinicName || '').trim() || 'DentaCare Stomatologiya Markazi';
       const cleanPhone = (phone || '').trim();
       const adminPinHash = hashPin(cleanPin);
-      const adminId = `mgr-${Date.now()}`;
-      const initials = adminName.trim().slice(0, 2).toUpperCase();
+      const nameParts = adminName.trim().split(/\s+/).filter(Boolean);
+      const initials = nameParts.length >= 2 ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() : (nameParts.length === 1 ? nameParts[0][0].toUpperCase() : 'M');
 
       const user = await db.withTransaction(async (client) => {
         // 1. Yangi Menejer (Admin) akkauntini yaratish
@@ -278,7 +278,8 @@ async function handleApiRequest(req, res, pathname, queryParams) {
 
       const pinHash = hashPin(pin);
       const id = body.id || `staff-${Date.now()}`;
-      const initials = body.avatar || name.slice(0, 2).toUpperCase();
+      const nameParts = name.trim().split(/\s+/).filter(Boolean);
+      const initials = body.avatar || (nameParts.length >= 2 ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() : (nameParts.length === 1 ? nameParts[0][0].toUpperCase() : 'M'));
       const color = body.avatarColor || '#0D9488';
 
       const result = await db.query(
@@ -289,6 +290,84 @@ async function handleApiRequest(req, res, pathname, queryParams) {
       );
 
       return sendJson(res, 201, { ok: true, staff: result.rows[0] });
+    } catch (err) {
+      return sendError(res, 500, err.message);
+    }
+  }
+
+  if (pathname.startsWith('/api/staff/') && req.method === 'PUT') {
+    try {
+      const id = pathname.replace('/api/staff/', '');
+      const body = await readJsonBody(req);
+      const { name, role, title, phone, avatar, avatarColor, pin } = body;
+
+      const cleanName = typeof name === 'string' ? name.trim() : null;
+      let cleanInitials = avatar;
+      if (!cleanInitials && cleanName) {
+        const parts = cleanName.replace(/^Dr\.\s*/i, '').split(/\s+/).filter(Boolean);
+        cleanInitials = parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : (parts.length === 1 ? parts[0][0].toUpperCase() : 'M');
+      }
+
+      const params = [id];
+      const updates = [];
+
+      if (cleanName !== null && cleanName !== undefined) {
+        params.push(cleanName);
+        updates.push(`name = $${params.length}`);
+      }
+      if (cleanInitials) {
+        params.push(cleanInitials);
+        updates.push(`avatar = $${params.length}`);
+      }
+      if (title !== undefined) {
+        params.push(title);
+        updates.push(`title = $${params.length}`);
+      }
+      if (phone !== undefined) {
+        params.push(phone);
+        updates.push(`phone = $${params.length}`);
+      }
+      if (avatarColor) {
+        params.push(avatarColor);
+        updates.push(`avatar_color = $${params.length}`);
+      }
+      if (role) {
+        params.push(role);
+        updates.push(`role = $${params.length}`);
+      }
+      if (pin && /^\d{4}$/.test(String(pin).trim())) {
+        params.push(hashPin(String(pin).trim()));
+        updates.push(`pin_hash = $${params.length}`);
+      }
+
+      if (updates.length === 0) {
+        return sendError(res, 400, 'Yangilash uchun ma\'lumot berilmadi');
+      }
+
+      const result = await db.query(
+        `UPDATE staff_members
+         SET ${updates.join(', ')}
+         WHERE id = $1
+         RETURNING id, name, role, avatar, avatar_color AS "avatarColor", title, phone, is_active AS "isActive"`,
+        params
+      );
+
+      if (result.rows.length === 0) {
+        const mgrUpdates = updates.map((u, i) => u.replace(`$${i + 2}`, `$${i + 1}`));
+        const mgrCheck = await db.query(
+          `UPDATE staff_members
+           SET ${mgrUpdates.join(', ')}
+           WHERE role = 'Menejer'
+           RETURNING id, name, role, avatar, avatar_color AS "avatarColor", title, phone, is_active AS "isActive"`,
+          params.slice(1)
+        );
+        if (mgrCheck.rows.length > 0) {
+          return sendJson(res, 200, { ok: true, staff: mgrCheck.rows[0] });
+        }
+        return sendError(res, 404, 'Xodim topilmadi');
+      }
+
+      return sendJson(res, 200, { ok: true, staff: result.rows[0] });
     } catch (err) {
       return sendError(res, 500, err.message);
     }

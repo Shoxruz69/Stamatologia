@@ -37,6 +37,7 @@ import {
   updateStaffPin,
   updateStaffMember,
   setRememberedStaff,
+  generateAvatarInitials,
   SecurityAccessCodes,
 } from '../utils/staffData';
 import { StaffMember } from '../types';
@@ -189,10 +190,12 @@ export const SettingsScreen: React.FC = () => {
 
     const targetStaffId = currentUser?.id || 'staff-man-0';
     const updatedPin = cleanNewPin ? cleanNewPin : (currentUser?.pin || '1234');
+    const newAvatar = generateAvatarInitials(cleanName);
 
     // 1. currentUser holatini yangilash
     updateCurrentUser({
       name: cleanName,
+      avatar: newAvatar,
       pin: updatedPin,
       title: personalPhone.trim() || currentUser?.title,
     });
@@ -203,14 +206,20 @@ export const SettingsScreen: React.FC = () => {
     }
     updateStaffMember(targetStaffId, {
       name: cleanName,
+      avatar: newAvatar,
       pin: updatedPin,
     });
 
     // 3. Eslab qolingan xodimni ham yangilash
     const allStaff = getStoredStaffMembers();
-    const updatedMember = allStaff.find((s) => s.id === targetStaffId);
+    const updatedMember = allStaff.find((s) => s.id === targetStaffId) || allStaff.find((s) => s.role === 'Menejer');
     if (updatedMember) {
-      setRememberedStaff(updatedMember);
+      setRememberedStaff({
+        ...updatedMember,
+        name: cleanName,
+        avatar: newAvatar,
+        pin: updatedPin,
+      });
     }
 
     setCurrentPin('');

@@ -26,6 +26,7 @@ import {
   DOCTOR_ACCESS_CODE,
   getSecurityAccessCodes,
   INITIAL_STAFF_MEMBERS,
+  generateAvatarInitials,
 } from '../utils/staffData';
 import {
   ToothIcon,
@@ -568,11 +569,12 @@ export const LoginScreen: React.FC = () => {
   // 1-OYNA: PAROL (4 XONALI PIN) OYNASI (ASOSIY TEZKOR KIRISH)
   // =========================================================================
   if (viewMode === 'PIN_SCREEN') {
-    const currentStaff = activeStaff || {
+    const remembered = getRememberedStaff();
+    const currentStaff = activeStaff || remembered || {
       id: 'manager-1',
-      name: 'Shoxruz',
+      name: 'Menejer',
       role: 'Menejer' as StaffRole,
-      avatar: 'SH',
+      avatar: 'M',
       avatarColor: '#2563EB',
       title: 'Klinika rahbari',
       pin: '',
@@ -600,7 +602,7 @@ export const LoginScreen: React.FC = () => {
             </View>
             <Text style={styles.desktopBrandSubtitle}>Stomatologiya boshqaruv tizimi</Text>
 
-            {/* ESLAB QOLINGAN XODIMNING KARTASI (Shoxruz profili) */}
+            {/* ESLAB QOLINGAN XODIMNING KARTASI */}
             <View style={styles.desktopUserCard}>
               <View style={styles.desktopUserLeft}>
                 <View
@@ -610,11 +612,11 @@ export const LoginScreen: React.FC = () => {
                   ]}
                 >
                   <Text style={styles.desktopAvatarText}>
-                    {currentStaff.avatar || (currentStaff.name ? currentStaff.name.slice(0, 2).toUpperCase() : 'SH')}
+                    {generateAvatarInitials(currentStaff.name)}
                   </Text>
                 </View>
                 <View style={styles.desktopUserInfo}>
-                  <Text style={styles.desktopUserName}>{currentStaff.name || 'Shoxruz'}</Text>
+                  <Text style={styles.desktopUserName}>{currentStaff.name || 'Menejer'}</Text>
                   <Text style={styles.desktopUserSub}>
                     {currentStaff.title ||
                       (currentStaff.role === 'Menejer'
@@ -772,13 +774,13 @@ export const LoginScreen: React.FC = () => {
               <View
                 style={[
                   styles.heroAvatar,
-                  { backgroundColor: activeStaff.avatarColor || roleColor },
+                  { backgroundColor: (activeStaff || currentStaff).avatarColor || roleColor },
                 ]}
               >
-                <Text style={styles.heroAvatarText}>{activeStaff.avatar}</Text>
+                <Text style={styles.heroAvatarText}>{generateAvatarInitials((activeStaff || currentStaff).name)}</Text>
               </View>
               <View style={styles.heroUserInfo}>
-                <Text style={styles.heroUserName}>{activeStaff.name}</Text>
+                <Text style={styles.heroUserName}>{(activeStaff || currentStaff).name}</Text>
                 <View style={styles.heroBadgeRow}>
                   <View
                     style={[
@@ -1079,7 +1081,7 @@ export const LoginScreen: React.FC = () => {
                             { backgroundColor: member.avatarColor || roleCol },
                           ]}
                         >
-                          <Text style={styles.staffPickerAvatarText}>{member.avatar}</Text>
+                          <Text style={styles.staffPickerAvatarText}>{generateAvatarInitials(member.name)}</Text>
                         </View>
 
                         <View style={styles.staffPickerInfo}>

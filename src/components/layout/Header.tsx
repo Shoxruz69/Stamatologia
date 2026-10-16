@@ -20,7 +20,7 @@ import {
   LockIcon,
   CloseIcon,
 } from '../common/Icons';
-import { getRoleDefaultColor } from '../../utils/staffData';
+import { getRoleDefaultColor, generateAvatarInitials } from '../../utils/staffData';
 
 interface HeaderProps {
   showMenuButton?: boolean;
@@ -182,7 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
               ]}
             >
               <Text style={styles.headerAvatarText}>
-                {currentUser?.avatar || 'SH'}
+                {generateAvatarInitials(currentUser?.name)}
               </Text>
             </View>
           </TouchableOpacity>
@@ -215,12 +215,12 @@ export const Header: React.FC<HeaderProps> = ({
                   ]}
                 >
                   <Text style={styles.headerAvatarTextSmall}>
-                    {currentUser?.avatar || 'SH'}
+                    {generateAvatarInitials(currentUser?.name)}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.profilePopName}>
-                    {currentUser?.name || 'Shoxruz'}
+                    {currentUser?.name || 'Menejer'}
                   </Text>
                   <Text style={styles.profilePopRole}>
                     {currentUser?.role === 'Menejer'
