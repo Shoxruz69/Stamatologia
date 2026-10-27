@@ -19,8 +19,6 @@ import {
   EditIcon,
   TrashIcon,
   EyeIcon,
-  MessageSquareIcon,
-  TelegramIcon,
   CreditCardIcon,
   CalendarIcon,
   CloseIcon,
@@ -31,7 +29,6 @@ interface PatientsScreenProps {
   onOpenNewModal: () => void;
   onEditPatient: (patient: Patient) => void;
   onViewPatient: (patient: Patient) => void;
-  onOpenSmsModal: (patient: Patient) => void;
   onQuickAppointment: (patient: Patient) => void;
   onQuickPayment: (patient: Patient) => void;
 }
@@ -40,7 +37,6 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
   onOpenNewModal,
   onEditPatient,
   onViewPatient,
-  onOpenSmsModal,
   onQuickAppointment,
   onQuickPayment,
 }) => {
@@ -135,7 +131,7 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
               <Text style={[styles.th, { width: 130 }]}>Oxirgi tashrif</Text>
               <Text style={[styles.th, { width: 100, textAlign: 'center' }]}>Tashriflar</Text>
               <Text style={[styles.th, { width: 130 }]}>Qarzdorlik</Text>
-              <Text style={[styles.th, { width: 170, textAlign: 'center' }]}>Amallar</Text>
+              <Text style={[styles.th, { width: 150, textAlign: 'center' }]}>Amallar</Text>
             </View>
 
           {/* Body */}
@@ -179,21 +175,9 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
                   </Text>
                 </TouchableOpacity>
 
-                {/* Telefon & Telegram holati */}
-                <View style={{ flex: 1.4 }}>
+                {/* Telefon */}
+                <View style={{ flex: 1.4, minWidth: 140 }}>
                   <Text style={styles.cellPhone}>{patient.phone}</Text>
-                  {patient.telegramChatId ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <TelegramIcon size={12} color="#0284C7" />
-                      <Text style={{ fontSize: 11, color: '#0284C7', fontWeight: '600' }}>
-                        {patient.telegramUsername || 'Telegram ulangan'}
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>
-                      Telegram ulanmagan
-                    </Text>
-                  )}
                 </View>
 
                 {/* Oxirgi tashrif */}
@@ -223,7 +207,7 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
                 </View>
 
                 {/* Amallar */}
-                <View style={[styles.actionsCell, { width: 180 }]}>
+                <View style={[styles.actionsCell, { width: 150 }]}>
                   {/* Bemor kartasini ko'rish */}
                   <TouchableOpacity
                     style={styles.actionIconBtn}
@@ -232,26 +216,6 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
                     title="Bemor kartasini ko‘rish"
                   >
                     <EyeIcon size={15} color={colors.primary} />
-                  </TouchableOpacity>
-
-                  {/* Telegram / SMS eslatma */}
-                  <TouchableOpacity
-                    style={[
-                      styles.actionIconBtn,
-                      patient.telegramChatId ? { backgroundColor: '#F0F9FF' } : undefined,
-                    ]}
-                    onPress={() => onOpenSmsModal(patient)}
-                    // @ts-ignore
-                    title={
-                      patient.telegramChatId
-                        ? `Telegram xabarnoma yuborish (${patient.telegramUsername || patient.telegramChatId})`
-                        : "Telegramni ulash (Botga biriktirish)"
-                    }
-                  >
-                    <TelegramIcon
-                      size={15}
-                      color={patient.telegramChatId ? '#0284C7' : '#64748B'}
-                    />
                   </TouchableOpacity>
 
                   {/* Qabul yozish */}

@@ -439,7 +439,7 @@ export const SettingsScreen: React.FC = () => {
               <Text style={styles.cardTitle}>1. Klinika Rekvizitlari va Ish Tartibi</Text>
             </View>
             <Text style={styles.cardSubtitle}>
-              Ushbu ma’lumotlar to‘lov kvitansiyalari (cheklar) va bemorlarga yuboriladigan xabarlarda aks etadi.
+              Ushbu ma’lumotlar to‘lov kvitansiyalari (cheklar) va hisobotlarda aks etadi.
             </Text>
 
             <Input

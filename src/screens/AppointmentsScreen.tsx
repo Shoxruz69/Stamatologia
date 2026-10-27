@@ -21,7 +21,6 @@ import { Select } from '../components/common/Input';
 import { Modal } from '../components/common/Modal';
 import { AppointmentStatusModal } from '../components/modals/AppointmentStatusModal';
 import { formatDate, formatCurrency } from '../utils/formatters';
-import { sendRealSms, sendTelegramToPatient } from '../services/smsService';
 
 interface AppointmentsScreenProps {
   onOpenNewModal: () => void;
@@ -162,8 +161,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   // Mobil qurilmalar uchun tezkor ko'chirish modal oynasi
   const [mobileMoveTargetApt, setMobileMoveTargetApt] = useState<Appointment | null>(null);
 
-  // Yuborilgan SMS'lar qaydnomasi (takroriy yuborilishni cheklash uchun)
-  const sentSmsLogsRef = useRef<Set<string>>(new Set());
+
 
   // 3 kunlik sanalar ro'yxati
   const currentThreeDays = useMemo(() => {
@@ -264,65 +262,15 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
         return;
       }
 
-      // 2. Sana formatlash va Telegram eslatma matnini shakllantirish
-      const formattedOldDate = formatDate(oldDate);
+      // 2. Muvaffaqiyatli xabar ko'rsatish
       const formattedNewDate = formatDate(targetDate);
-      const telegramMessage = `Assalomu alaykum, ${targetApt.patientName}! DentaCare klinikasidagi qabulingiz ${formattedOldDate}dan ${formattedNewDate}ga, soat ${targetApt.time}ga ko‘chirildi.`;
-
-      // 3. Telegram orqali yuborish tekshiruvi
-      const logKey = `${aptId}_${targetDate}`;
-      if (sentSmsLogsRef.current.has(logKey)) {
-        showToast(
-          `Qabul ${formattedNewDate}ga ko‘chirildi.`,
-          'success',
-          'Qabul ko‘chirildi'
-        );
-        return;
-      }
-
-      sentSmsLogsRef.current.add(logKey);
-
-      // Bemorning Telegram bog'langanligini tekshirish
-      const matchedPatient = patients.find(
-        (p) =>
-          p.id === targetApt.patientId ||
-          (p.fullName && targetApt.patientName && p.fullName.trim().toLowerCase() === targetApt.patientName.trim().toLowerCase())
+      showToast(
+        `Qabul ${formattedNewDate}ga ko‘chirildi.`,
+        'success',
+        'Qabul ko‘chirildi'
       );
-
-      if (matchedPatient?.telegramChatId) {
-        sendTelegramToPatient(matchedPatient.telegramChatId, telegramMessage)
-          .then((res) => {
-            if (res.success) {
-              showToast(
-                `Qabul yangi kunga ko‘chirildi va Telegram bot orqali bemorga eslatma yuborildi.`,
-                'success',
-                'Telegram xabarnomasi yuborildi'
-              );
-            } else {
-              showToast(
-                `Qabul ko‘chirildi, ammo Telegram orqali yetkazilmadi: ${res.message}`,
-                'info',
-                'Telegram ulanmagan'
-              );
-            }
-          })
-          .catch(() => {
-            showToast(
-              `Qabul ko‘chirildi, biroq Telegram orqali yuborishda xatolik yuz berdi.`,
-              'info',
-              'Telegram xatosi'
-            );
-          });
-      } else {
-        // Telegram ulanmagan bemorga yuborilgan deb ko'rsatilmaydi; aniq bildiriladi
-        showToast(
-          `Qabul ${formattedNewDate}ga ko‘chirildi, ammo Telegram ulanmagan. Iltimos, bemor botda Start tugmasini bossin.`,
-          'info',
-          'Telegram ulanmagan'
-        );
-      }
     },
-    [appointments, patients, updateAppointment, showToast]
+    [appointments, updateAppointment, showToast]
   );
 
   // ============================================================

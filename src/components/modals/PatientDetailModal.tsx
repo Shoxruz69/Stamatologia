@@ -9,13 +9,10 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import { colors } from '../../theme/colors';
 import {
   PhoneIcon,
-  MessageSquareIcon,
-  TelegramIcon,
   CalendarIcon,
   CreditCardIcon,
   PlusIcon,
   CheckIcon,
-  LinkIcon,
 } from '../common/Icons';
 
 interface PatientDetailModalProps {
@@ -23,7 +20,6 @@ interface PatientDetailModalProps {
   onClose: () => void;
   patient?: Patient | null;
   patientId?: string | null;
-  onOpenSmsModal: (patient: Patient) => void;
   onNewAppointment: (patient: Patient) => void;
   onNewPayment: (patient: Patient) => void;
 }
@@ -33,7 +29,6 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   onClose,
   patient,
   patientId,
-  onOpenSmsModal,
   onNewAppointment,
   onNewPayment,
 }) => {
@@ -121,13 +116,9 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
       footer={
         <View style={styles.footerRow}>
           <Button
-            title={targetPatient.telegramChatId ? "Telegram eslatma" : "Telegramni ulash"}
+            title="Yopish"
             variant="outline"
-            icon={<TelegramIcon size={16} color={targetPatient.telegramChatId ? "#0284C7" : "#0D9488"} />}
-            onPress={() => {
-              onClose();
-              onOpenSmsModal(targetPatient);
-            }}
+            onPress={onClose}
           />
           <Button
             title="+ Yangi Qabul"
@@ -182,64 +173,6 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
             </TouchableOpacity>
           )}
         </View>
-      </View>
-
-      {/* Telegram holati va ulash tugmasi */}
-      <View
-        style={[
-          styles.telegramBar,
-          targetPatient.telegramChatId ? styles.telegramBarConnected : styles.telegramBarUnconnected,
-        ]}
-      >
-        <View style={styles.telegramBarLeft}>
-          <TelegramIcon
-            size={18}
-            color={targetPatient.telegramChatId ? '#0284C7' : '#D97706'}
-          />
-          <View style={{ flex: 1 }}>
-            {targetPatient.telegramChatId ? (
-              <Text style={styles.telegramBarText}>
-                <Text style={{ color: '#16A34A', fontWeight: '700' }}>Telegram ulangan: </Text>
-                <Text style={{ fontWeight: '700', color: '#0F172A' }}>
-                  {targetPatient.telegramUsername || `ID: ${targetPatient.telegramChatId}`}
-                </Text>
-              </Text>
-            ) : (
-              <Text style={styles.telegramBarText}>
-                <Text style={{ color: '#D97706', fontWeight: '700' }}>Telegram ulanmagan </Text>
-                <Text style={{ color: '#64748B', fontSize: 12 }}>
-                  • Qabul xabarnomalari borishi uchun botga ulanishi zarur
-                </Text>
-              </Text>
-            )}
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.telegramBarActionBtn,
-            targetPatient.telegramChatId
-              ? styles.telegramBarBtnConnected
-              : styles.telegramBarBtnConnect,
-          ]}
-          onPress={() => {
-            onClose();
-            onOpenSmsModal(targetPatient);
-          }}
-          activeOpacity={0.8}
-        >
-            {!targetPatient.telegramChatId && (
-              <LinkIcon size={13} color="#FFFFFF" />
-            )}
-            <Text
-              style={[
-                styles.telegramBarBtnText,
-                targetPatient.telegramChatId ? { color: '#0284C7' } : { color: '#FFFFFF' },
-              ]}
-            >
-              {targetPatient.telegramChatId ? 'Xabar yuborish' : 'Telegramni ulash'}
-            </Text>
-        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -731,52 +664,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  telegramBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 12,
-    gap: 12,
-    flexWrap: 'wrap',
-  },
-  telegramBarConnected: {
-    backgroundColor: '#F0F9FF',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  telegramBarUnconnected: {
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  telegramBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  telegramBarText: {
-    fontSize: 13,
-    color: '#1E293B',
-  },
-  telegramBarActionBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  telegramBarBtnConnect: {
-    backgroundColor: '#0D9488',
-  },
-  telegramBarBtnConnected: {
-    backgroundColor: '#E0F2FE',
-    borderWidth: 1,
-    borderColor: '#7DD3FC',
-  },
-  telegramBarBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
 });

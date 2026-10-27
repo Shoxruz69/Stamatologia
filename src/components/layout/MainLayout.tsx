@@ -30,7 +30,6 @@ import { DoctorModal } from '../modals/DoctorModal';
 import { ServiceModal } from '../modals/ServiceModal';
 import { PaymentModal } from '../modals/PaymentModal';
 import { ReceiptModal } from '../modals/ReceiptModal';
-import { SmsTelegramModal } from '../modals/SmsTelegramModal';
 
 // Toast
 import { ToastContainer } from '../common/Toast';
@@ -91,8 +90,7 @@ export const MainLayout: React.FC = () => {
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
   const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState<Payment | null>(null);
 
-  const [smsModalVisible, setSmsModalVisible] = useState(false);
-  const [smsPatient, setSmsPatient] = useState<Patient | null>(null);
+
 
   const renderCurrentScreen = () => {
     switch (currentTab) {
@@ -151,10 +149,7 @@ export const MainLayout: React.FC = () => {
               setSelectedPatientForDetail(p);
               setPatientDetailVisible(true);
             }}
-            onOpenSmsModal={(p) => {
-              setSmsPatient(p);
-              setSmsModalVisible(true);
-            }}
+
             onQuickAppointment={(p) => {
               setAptToEdit(null);
               setAptModalVisible(true);
@@ -332,10 +327,7 @@ export const MainLayout: React.FC = () => {
           }}
           patientId={selectedPatientIdForDetail}
           patient={selectedPatientForDetail}
-          onOpenSmsModal={(p) => {
-            setSmsPatient(p);
-            setSmsModalVisible(true);
-          }}
+
           onNewAppointment={() => {
             setAptToEdit(null);
             setAptModalVisible(true);
@@ -377,11 +369,7 @@ export const MainLayout: React.FC = () => {
         payment={selectedPaymentForReceipt}
       />
 
-      <SmsTelegramModal
-        visible={smsModalVisible}
-        onClose={() => setSmsModalVisible(false)}
-        patient={smsPatient}
-      />
+
 
       {/* Bildirishnomalar */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
