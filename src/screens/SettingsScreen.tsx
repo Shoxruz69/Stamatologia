@@ -58,15 +58,12 @@ export const SettingsScreen: React.FC = () => {
     syncWithBackend,
     migrateLocalDataToPostgres,
     downloadLocalBackup,
-    cleanAllTestData,
   } = useApp();
 
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationResult, setMigrationResult] = useState<any>(null);
   const [showMigrateConfirm, setShowMigrateConfirm] = useState(false);
   const [showLegacyMigration, setShowLegacyMigration] = useState(false);
-  const [showCleanConfirm, setShowCleanConfirm] = useState(false);
-  const [isCleaning, setIsCleaning] = useState(false);
 
   const isManager = currentUser?.role === 'Menejer';
 
@@ -839,15 +836,6 @@ export const SettingsScreen: React.FC = () => {
                 variant="outline"
                 onPress={() => setShowLegacyMigration(!showLegacyMigration)}
               />
-              {isManager && (
-                <Button
-                  title={isCleaning ? 'Tozalanmoqda...' : 'Test Ma’lumotlarini Tozalash (0 dan boshlash)'}
-                  variant="danger"
-                  disabled={isCleaning}
-                  icon={<TrashIcon size={15} color="#FFF" />}
-                  onPress={() => setShowCleanConfirm(true)}
-                />
-              )}
             </View>
 
             {/* Eski ma'lumotlarni import qilish (faqat ochilganda ko'rinadi) */}
@@ -990,22 +978,6 @@ export const SettingsScreen: React.FC = () => {
           setMigrationResult(res);
         }}
         onCancel={() => setShowMigrateConfirm(false)}
-      />
-
-      {/* Test ma'lumotlarini tozalash dialogi */}
-      <ConfirmDialog
-        visible={showCleanConfirm}
-        title="Barcha Test Ma’lumotlarini Tozalash"
-        message="Haqiqatan ham barcha test bemorlar, qabullar va to‘lovlarni tozalamoqchimisiz? Tizim yangi klinika uchun 0 dan boshlanadi. Menejer hisobingiz, shifokorlar va xizmatlar saqlanib qoladi."
-        confirmText="Ha, barchasini tozalash"
-        isDestructive={true}
-        onConfirm={async () => {
-          setShowCleanConfirm(false);
-          setIsCleaning(true);
-          await cleanAllTestData();
-          setIsCleaning(false);
-        }}
-        onCancel={() => setShowCleanConfirm(false)}
       />
     </ScrollView>
   );
