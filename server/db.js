@@ -140,6 +140,36 @@ class DatabaseManager {
     return this.isConnected && (this.pool !== null || this.pglite !== null);
   }
 
+  async ping() {
+    if (!this.isConnected || (!this.pool && !this.pglite)) {
+      return { connected: false, error: this.lastError || 'PostgreSQL bazasi ulanmagan' };
+    }
+    try {
+      if (this.isEmbedded && this.pglite) {
+        await this.pglite.query('SELECT 1 as ping');
+        this.isConnected = true;
+        this.lastError = null;
+        return { connected: true };
+      }
+      if (this.pool) {
+        const client = await this.pool.connect();
+        try {
+          await client.query('SELECT 1 as ping');
+          this.isConnected = true;
+          this.lastError = null;
+          return { connected: true };
+        } finally {
+          client.release();
+        }
+      }
+      return { connected: false, error: 'PostgreSQL ulanish puli mavjud emas' };
+    } catch (err) {
+      this.isConnected = false;
+      this.lastError = err.message;
+      return { connected: false, error: err.message };
+    }
+  }
+
   getDbStatus() {
     return {
       connected: this.isConnected,

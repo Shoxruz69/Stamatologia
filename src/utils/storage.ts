@@ -23,7 +23,22 @@ export const STORAGE_KEYS = {
   PAYMENTS: 'dentacare_payments_v3',
   SETTINGS: 'dentacare_settings_v3',
   STAFF: 'dentacare_staff_members_v3',
+  SYNC_QUEUE: 'dentacare_sync_queue_v1',
 };
+
+export interface SyncQueueItem {
+  id: string; // queue item ID
+  entity: 'patient' | 'appointment' | 'payment' | 'doctor' | 'service';
+  action: 'create' | 'update' | 'delete';
+  entityId: string;
+  data: any;
+  createdAt: string;
+  attempts: number;
+  lastError?: string;
+}
+
+export const loadSyncQueue = (): SyncQueueItem[] => safeGetItem<SyncQueueItem[]>(STORAGE_KEYS.SYNC_QUEUE, []);
+export const saveSyncQueue = (queue: SyncQueueItem[]) => safeSetItem(STORAGE_KEYS.SYNC_QUEUE, queue);
 
 // Xavfsiz tarzda localStorage dan o'qish va ma'lumotlarni tiklash/birlashtirish
 export function safeGetItem<T>(key: string, fallback: T): T {

@@ -113,12 +113,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     });
     clearTimeout(timeoutId);
 
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
     if (!res.ok || (data && data.ok === false)) {
       const errMsg = (data && (data.error || data.message)) || `Server xatosi (${res.status})`;
       const err = new Error(errMsg);
       (err as any).code = data && data.code;
       (err as any).status = res.status;
+      (err as any).data = data;
       throw err;
     }
 
@@ -137,7 +138,14 @@ export const apiClient = {
 
   // 1. Tizim va Baza tekshiruvi
   checkHealth: async (): Promise<ApiHealthResponse> => {
-    return request<ApiHealthResponse>('/api/health');
+    try {
+      return await request<ApiHealthResponse>('/api/health');
+    } catch (err: any) {
+      if (err.data && err.data.database) {
+        return err.data as ApiHealthResponse;
+      }
+      throw err;
+    }
   },
 
   // 1.1. Boshlang'ich tizim sozlash (Setup Onboarding)

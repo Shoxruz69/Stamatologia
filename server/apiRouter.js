@@ -44,21 +44,63 @@ function sendError(res, statusCode, message, code = 'ERROR') {
 }
 
 /**
+ * O'zbekiston telefon raqamini standart formatga keltirish (+998 90 123 45 67)
+ */
+function normalizeUzbekPhone(phone) {
+  if (!phone) return '';
+  const digits = String(phone).replace(/\D/g, '');
+  if (!digits) return '';
+  let national = digits;
+  if (digits.startsWith('998') && digits.length >= 12) {
+    national = digits.slice(3, 12);
+  } else if (digits.length >= 9) {
+    national = digits.slice(-9);
+  }
+  if (national.length === 9) {
+    return `+998 ${national.slice(0, 2)} ${national.slice(2, 5)} ${national.slice(5, 7)} ${national.slice(7, 9)}`;
+  }
+  return String(phone).trim();
+}
+
+/**
+ * Telefon raqamining oxirgi 9 ta raqamini olish (aniq dublikat tekshiruvi uchun)
+ */
+function extractNationalPhoneDigits(phone) {
+  if (!phone) return '';
+  const digits = String(phone).replace(/\D/g, '');
+  if (digits.startsWith('998') && digits.length >= 12) {
+    return digits.slice(3, 12);
+  }
+  return digits.length >= 9 ? digits.slice(-9) : digits;
+}
+
+/**
  * Asosiy API yo'riqchisi (Router)
  */
 async function handleApiRequest(req, res, pathname, queryParams) {
-  // 1. TIZIM VA BAZA HOLATI
+  if (!pathname && req.url) {
+    try {
+      const u = new URL(req.url, `http://${req.headers?.host || 'localhost'}`);
+      pathname = u.pathname;
+      queryParams = u.searchParams;
+    } catch {}
+  }
+
+  // 1. TIZIM VA BAZA HOLATI (Haqiqiy SELECT 1 orqali tekshirish)
   if (pathname === '/api/health' && req.method === 'GET') {
+    const pingResult = await db.ping();
     const dbStatus = db.getDbStatus();
-    return sendJson(res, 200, {
-      ok: true,
-      status: 'online',
+    const isDbConnected = pingResult.connected;
+
+    return sendJson(res, isDbConnected ? 200 : 503, {
+      ok: isDbConnected,
+      status: isDbConnected ? 'online' : 'database_disconnected',
       version: '1.0.0',
       serverTime: new Date().toISOString(),
       database: {
         engine: 'PostgreSQL',
-        connected: dbStatus.connected,
-        lastError: dbStatus.lastError,
+        connected: isDbConnected,
+        lastError: pingResult.error || dbStatus.lastError,
         name: dbStatus.database,
       },
     });
@@ -391,6 +433,18 @@ async function handleApiRequest(req, res, pathname, queryParams) {
     try {
       const body = await readJsonBody(req);
       const id = body.id || `srv-${Date.now()}`;
+
+      // Idempotency: Agar shu ID'li xizmat mavjud bo'lsa, mavjudini qaytarish
+      const existingSrv = await db.query(
+        `SELECT id, name, category, price, duration_minutes AS "durationMinutes",
+                is_active AS "isActive", description
+         FROM services WHERE id = $1`,
+        [id]
+      );
+      if (existingSrv.rows.length > 0) {
+        return sendJson(res, 200, { ok: true, service: existingSrv.rows[0], deduplicated: true });
+      }
+
       const result = await db.query(
         `INSERT INTO services (id, name, category, price, duration_minutes, is_active, description)
          VALUES ($1, $2, $3, $4, $5, true, $6)
@@ -454,6 +508,20 @@ async function handleApiRequest(req, res, pathname, queryParams) {
     try {
       const body = await readJsonBody(req);
       const id = body.id || `doc-${Date.now()}`;
+
+      // Idempotency: Agar shu ID'li shifokor mavjud bo'lsa, mavjudini qaytarish
+      const existingDoc = await db.query(
+        `SELECT id, full_name AS "fullName", specialty, phone,
+                work_days AS "workDays", work_hours AS "workHours",
+                is_active AS "isActive", avatar_color AS "avatarColor"
+         FROM doctors WHERE id = $1`,
+        [id]
+      );
+      if (existingDoc.rows.length > 0) {
+        return sendJson(res, 200, { ok: true, doctor: existingDoc.rows[0], deduplicated: true });
+      }
+
+      const normDocPhone = normalizeUzbekPhone(body.phone);
       const result = await db.query(
         `INSERT INTO doctors (id, full_name, specialty, phone, work_days, work_hours, is_active, avatar_color)
          VALUES ($1, $2, $3, $4, $5, $6, true, $7)
@@ -464,7 +532,7 @@ async function handleApiRequest(req, res, pathname, queryParams) {
           id,
           body.fullName,
           body.specialty,
-          body.phone,
+          normDocPhone || body.phone,
           JSON.stringify(body.workDays || []),
           JSON.stringify(body.workHours || { start: '09:00', end: '18:00' }),
           body.avatarColor || '#0D9488',
@@ -541,20 +609,56 @@ async function handleApiRequest(req, res, pathname, queryParams) {
       const body = await readJsonBody(req);
       const id = body.id || `pat-${Date.now()}`;
       const debt = parseInt(body.debt || 0, 10);
+
+      // 1. Idempotency: Agar shu ID'li bemor mavjud bo'lsa, mavjudini qaytarish
+      const existingById = await db.query(
+        `SELECT id, full_name AS "fullName", phone, gender, birth_date AS "birthDate",
+                address, total_visits AS "totalVisits", last_visit_date AS "lastVisitDate",
+                debt, notes, telegram_chat_id AS "telegramChatId",
+                telegram_username AS "telegramUsername", telegram_connected_at AS "telegramConnectedAt",
+                TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdAt"
+         FROM patients WHERE id = $1`,
+        [id]
+      );
+      if (existingById.rows.length > 0) {
+        return sendJson(res, 200, { ok: true, patient: existingById.rows[0], deduplicated: true });
+      }
+
+      // 2. Telefon raqamini normalizatsiya qilish va dublikat tekshirish
+      const normPhone = normalizeUzbekPhone(body.phone);
+      const natDigits = extractNationalPhoneDigits(normPhone || body.phone);
+
+      if (natDigits && natDigits.length >= 7) {
+        const existingByPhone = await db.query(
+          `SELECT id, full_name, phone FROM patients
+           WHERE regexp_replace(phone, '\\D', '', 'g') LIKE $1`,
+          [`%${natDigits}`]
+        );
+        if (existingByPhone.rows.length > 0) {
+          const dup = existingByPhone.rows[0];
+          return sendError(
+            res,
+            409,
+            `Ushbu telefon raqamiga (${dup.phone}) ega bemor allaqachon mavjud: "${dup.full_name}". Takroriy bemor qo‘shish to‘xtatildi.`,
+            'DUPLICATE_PHONE'
+          );
+        }
+      }
+
       const result = await db.query(
         `INSERT INTO patients (id, full_name, phone, gender, birth_date, address, total_visits, debt, notes, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, NOW())
          RETURNING id, full_name AS "fullName", phone, gender, birth_date AS "birthDate",
                    address, total_visits AS "totalVisits", last_visit_date AS "lastVisitDate",
                    debt, notes, TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdAt"`,
-        [id, body.fullName, body.phone, body.gender || 'Erkak', body.birthDate || null, body.address || null, debt, body.notes || null]
+        [id, body.fullName ? body.fullName.trim() : '', normPhone || body.phone || '', body.gender || 'Erkak', body.birthDate || null, body.address || null, debt, body.notes || null]
       );
 
       await auditLogger.log({
         action: 'CREATE_PATIENT',
         entityType: 'patient',
         entityId: id,
-        details: { name: body.fullName, phone: body.phone },
+        details: { name: body.fullName, phone: normPhone || body.phone },
       });
 
       return sendJson(res, 201, { ok: true, patient: result.rows[0] });
@@ -567,6 +671,29 @@ async function handleApiRequest(req, res, pathname, queryParams) {
     try {
       const id = pathname.replace('/api/patients/', '');
       const body = await readJsonBody(req);
+
+      let normPhone = undefined;
+      if (body.phone !== undefined) {
+        normPhone = normalizeUzbekPhone(body.phone);
+        const natDigits = extractNationalPhoneDigits(normPhone || body.phone);
+        if (natDigits && natDigits.length >= 7) {
+          const checkPhone = await db.query(
+            `SELECT id, full_name, phone FROM patients
+             WHERE regexp_replace(phone, '\\D', '', 'g') LIKE $1 AND id != $2`,
+            [`%${natDigits}`, id]
+          );
+          if (checkPhone.rows.length > 0) {
+            const dup = checkPhone.rows[0];
+            return sendError(
+              res,
+              409,
+              `Boshqa bemor (${dup.full_name}) ushbu telefon raqamiga (${dup.phone}) ega.`,
+              'DUPLICATE_PHONE'
+            );
+          }
+        }
+      }
+
       const result = await db.query(
         `UPDATE patients
          SET full_name = COALESCE($1, full_name),
@@ -586,8 +713,8 @@ async function handleApiRequest(req, res, pathname, queryParams) {
                    telegram_username AS "telegramUsername",
                    TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdAt"`,
         [
-          body.fullName,
-          body.phone,
+          body.fullName !== undefined ? body.fullName.trim() : null,
+          normPhone !== undefined ? normPhone : null,
           body.gender,
           body.birthDate,
           body.address,
@@ -598,6 +725,9 @@ async function handleApiRequest(req, res, pathname, queryParams) {
           id,
         ]
       );
+      if (result.rows.length === 0) {
+        return sendError(res, 404, 'Bemor topilmadi');
+      }
       return sendJson(res, 200, { ok: true, patient: result.rows[0] });
     } catch (err) {
       return sendError(res, 500, err.message);
@@ -635,12 +765,27 @@ async function handleApiRequest(req, res, pathname, queryParams) {
     try {
       const body = await readJsonBody(req);
       const { doctorId, date, time } = body;
+      const id = body.id || `apt-${Date.now()}`;
 
-      // 1. Vaqt to'qnashuvi tekshiruvi (Concurrency / Conflict check)
+      // 1. Idempotency: Agar shu ID'li qabul mavjud bo'lsa, mavjudini qaytarish
+      const existingApt = await db.query(
+        `SELECT id, patient_id AS "patientId", patient_name AS "patientName", patient_phone AS "patientPhone",
+                doctor_id AS "doctorId", doctor_name AS "doctorName",
+                service_id AS "serviceId", service_name AS "serviceName", service_price AS "servicePrice",
+                date, time, duration_minutes AS "durationMinutes", status, notes,
+                paid_amount AS "paidAmount", TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdAt"
+         FROM appointments WHERE id = $1`,
+        [id]
+      );
+      if (existingApt.rows.length > 0) {
+        return sendJson(res, 200, { ok: true, appointment: existingApt.rows[0], deduplicated: true });
+      }
+
+      // 2. Vaqt to'qnashuvi tekshiruvi (Concurrency / Conflict check)
       const conflictRes = await db.query(
         `SELECT id FROM appointments
-         WHERE doctor_id = $1 AND date = $2 AND time = $3 AND status != 'Bekor qilindi'`,
-        [doctorId, date, time]
+         WHERE doctor_id = $1 AND date = $2 AND time = $3 AND status != 'Bekor qilindi' AND id != $4`,
+        [doctorId, date, time, id]
       );
 
       if (conflictRes.rows.length > 0) {
@@ -652,7 +797,6 @@ async function handleApiRequest(req, res, pathname, queryParams) {
         );
       }
 
-      const id = body.id || `apt-${Date.now()}`;
       const price = parseInt(body.servicePrice || 0, 10);
 
       // Tranzaksiya orqali qabul yaratish, bemorning tashrif sonini oshirish
@@ -896,6 +1040,21 @@ async function handleApiRequest(req, res, pathname, queryParams) {
       const body = await readJsonBody(req);
       const id = body.id || `pay-${Date.now()}`;
       const receiptNumber = body.receiptNumber || `CH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // 1. Idempotency: Agar shu ID yoki receiptNumber mavjud bo'lsa, mavjudini qaytarish
+      const existingPay = await db.query(
+        `SELECT id, appointment_id AS "appointmentId", patient_id AS "patientId",
+                patient_name AS "patientName", doctor_id AS "doctorId", doctor_name AS "doctorName",
+                service_name AS "serviceName", total_amount AS "totalAmount",
+                paid_amount AS "paidAmount", debt_amount AS "debtAmount",
+                payment_method AS "paymentMethod", status, date, time, notes,
+                receipt_number AS "receiptNumber", TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdAt"
+         FROM payments WHERE id = $1 OR (receipt_number = $2 AND receipt_number IS NOT NULL)`,
+        [id, receiptNumber]
+      );
+      if (existingPay.rows.length > 0) {
+        return sendJson(res, 200, { ok: true, payment: existingPay.rows[0], deduplicated: true });
+      }
 
       const totalAmount = parseInt(body.totalAmount || 0, 10);
       const paidAmount = parseInt(body.paidAmount || 0, 10);

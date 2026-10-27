@@ -27,6 +27,8 @@ export type ServiceCategory =
   | 'Rentgen va diagnostika'
   | 'Protezlash';
 
+export type SyncStatus = 'synced' | 'pending';
+
 export interface Service {
   id: string;
   name: string;
@@ -35,6 +37,7 @@ export interface Service {
   durationMinutes: number; // Daqiqalarda
   isActive: boolean;
   description?: string;
+  syncStatus?: SyncStatus;
 }
 
 export interface Doctor {
@@ -49,6 +52,7 @@ export interface Doctor {
   };
   isActive: boolean;
   avatarColor?: string;
+  syncStatus?: SyncStatus;
 }
 
 export interface Patient {
@@ -66,6 +70,7 @@ export interface Patient {
   telegramChatId?: string; // Bemorning Telegram chat ID raqami
   telegramUsername?: string; // Bemorning Telegram @username
   telegramConnectedAt?: string; // Telegram ulangan sana
+  syncStatus?: SyncStatus;
 }
 
 export interface Appointment {
@@ -85,6 +90,7 @@ export interface Appointment {
   notes?: string;
   paidAmount: number; // Ushbu qabul bo'yicha to'langan
   createdAt: string;
+  syncStatus?: SyncStatus;
 }
 
 export interface Payment {
@@ -104,6 +110,7 @@ export interface Payment {
   time: string; // '14:20'
   notes?: string;
   receiptNumber: string;
+  syncStatus?: SyncStatus;
 }
 
 export interface ClinicSettings {

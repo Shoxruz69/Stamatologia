@@ -169,7 +169,14 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
                   style={{ flex: 2 }}
                   onPress={() => onViewPatient(patient)}
                 >
-                  <Text style={styles.cellFullName}>{patient.fullName}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Text style={styles.cellFullName}>{patient.fullName}</Text>
+                    {patient.syncStatus === 'pending' && (
+                      <View style={styles.pendingBadge}>
+                        <Text style={styles.pendingBadgeText}>Sinxronlash kutilmoqda</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.cellSubInfo}>
                     {patient.gender} • {patient.address || 'Manzil kiritilmagan'}
                   </Text>
@@ -452,5 +459,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textMuted,
     marginTop: 4,
+  },
+  pendingBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  pendingBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#D97706',
   },
 });

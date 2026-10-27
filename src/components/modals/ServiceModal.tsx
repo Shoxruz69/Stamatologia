@@ -52,9 +52,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       setDescription('');
     }
     setErrors({});
+    setIsSubmitting(false);
   }, [serviceToEdit, visible]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = () => {
+    if (isSubmitting) return;
+
     const newErrors: Record<string, string> = {};
 
     if (!name.trim()) newErrors.name = 'Xizmat nomini kiriting';
@@ -68,25 +73,30 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
 
-    if (serviceToEdit) {
-      updateService(serviceToEdit.id, {
-        name: name.trim(),
-        category,
-        price: priceNum,
-        durationMinutes: durationNum,
-        description: description.trim(),
-      });
-    } else {
-      addService({
-        name: name.trim(),
-        category,
-        price: priceNum,
-        durationMinutes: durationNum,
-        description: description.trim(),
-        isActive: true,
-      });
+    setIsSubmitting(true);
+    try {
+      if (serviceToEdit) {
+        updateService(serviceToEdit.id, {
+          name: name.trim(),
+          category,
+          price: priceNum,
+          durationMinutes: durationNum,
+          description: description.trim(),
+        });
+      } else {
+        addService({
+          name: name.trim(),
+          category,
+          price: priceNum,
+          durationMinutes: durationNum,
+          description: description.trim(),
+          isActive: true,
+        });
+      }
+      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   return (
@@ -98,11 +108,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       maxWidth={560}
       footer={
         <View style={styles.footerRow}>
-          <Button title="Bekor qilish" variant="outline" onPress={onClose} />
+          <Button title="Bekor qilish" variant="outline" onPress={onClose} disabled={isSubmitting} />
           <Button
-            title={serviceToEdit ? 'Saqlash' : 'Xizmatni Qo‘shish'}
+            title={isSubmitting ? 'Saqlanmoqda...' : (serviceToEdit ? 'Saqlash' : 'Xizmatni Qo‘shish')}
             variant="primary"
             onPress={handleSubmit}
+            disabled={isSubmitting}
           />
         </View>
       }

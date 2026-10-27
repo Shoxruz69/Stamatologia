@@ -377,3 +377,26 @@ export const formatUzbekPhoneNumber = (input?: string | null): string => {
   }
   return res;
 };
+
+/**
+ * Telefon raqamidan faqat milliy 9 ta raqamni ajratib olish (dublikat tekshirish uchun)
+ * Masalan: "+998 90 123 45 67" -> "901234567"
+ */
+export const extractPhoneDigits = (input?: string | null): string => {
+  if (!input) return '';
+  const digits = String(input).replace(/\D/g, '');
+  if (digits.startsWith('998') && digits.length >= 12) {
+    return digits.slice(3, 12);
+  }
+  return digits.length >= 9 ? digits.slice(-9) : digits;
+};
+
+/**
+ * Ikki telefon raqami aynan bir xil abonentga tegishli ekanligini tekshirish
+ */
+export const arePhoneNumbersEqual = (phone1?: string | null, phone2?: string | null): boolean => {
+  const d1 = extractPhoneDigits(phone1);
+  const d2 = extractPhoneDigits(phone2);
+  if (!d1 || !d2) return false;
+  return d1 === d2;
+};

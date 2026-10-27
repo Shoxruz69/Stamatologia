@@ -678,7 +678,14 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                         >
                           {/* Yuqori qator: Vaqt va Holat pilli */}
                           <View style={styles.cardTopRow}>
-                            <Text style={styles.cardTimeText}>{apt.time}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={styles.cardTimeText}>{apt.time}</Text>
+                              {apt.syncStatus === 'pending' && (
+                                <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, borderWidth: 1, borderColor: '#FDE68A' }}>
+                                  <Text style={{ fontSize: 9, color: '#D97706', fontWeight: '700' }}>Kutilmoqda</Text>
+                                </View>
+                              )}
+                            </View>
                             <View
                               style={[
                                 styles.cardStatusPill,

@@ -50,7 +50,10 @@ export const DoctorModal: React.FC<DoctorModalProps> = ({
       setEndTime('18:00');
     }
     setErrors({});
+    setIsSubmitting(false);
   }, [doctorToEdit, visible]);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleDay = (day: string) => {
     if (workDays.includes(day)) {
@@ -61,6 +64,8 @@ export const DoctorModal: React.FC<DoctorModalProps> = ({
   };
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
+
     const newErrors: Record<string, string> = {};
 
     if (!fullName.trim()) newErrors.fullName = 'Shifokorning to‘liq ismini kiriting';
@@ -73,27 +78,32 @@ export const DoctorModal: React.FC<DoctorModalProps> = ({
       return;
     }
 
-    if (doctorToEdit) {
-      updateDoctor(doctorToEdit.id, {
-        fullName: fullName.trim(),
-        specialty: specialty.trim(),
-        phone: phone.trim(),
-        workDays,
-        workHours: { start: startTime, end: endTime },
-      });
-      registerOrUpdateStaffMember(fullName.trim(), 'Shifokor', '1234');
-    } else {
-      addDoctor({
-        fullName: fullName.trim(),
-        specialty: specialty.trim(),
-        phone: phone.trim(),
-        workDays,
-        workHours: { start: startTime, end: endTime },
-        isActive: true,
-      });
-      registerOrUpdateStaffMember(fullName.trim(), 'Shifokor', '1234');
+    setIsSubmitting(true);
+    try {
+      if (doctorToEdit) {
+        updateDoctor(doctorToEdit.id, {
+          fullName: fullName.trim(),
+          specialty: specialty.trim(),
+          phone: phone.trim(),
+          workDays,
+          workHours: { start: startTime, end: endTime },
+        });
+        registerOrUpdateStaffMember(fullName.trim(), 'Shifokor', '1234');
+      } else {
+        addDoctor({
+          fullName: fullName.trim(),
+          specialty: specialty.trim(),
+          phone: phone.trim(),
+          workDays,
+          workHours: { start: startTime, end: endTime },
+          isActive: true,
+        });
+        registerOrUpdateStaffMember(fullName.trim(), 'Shifokor', '1234');
+      }
+      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   return (
@@ -105,11 +115,12 @@ export const DoctorModal: React.FC<DoctorModalProps> = ({
       maxWidth={580}
       footer={
         <View style={styles.footerRow}>
-          <Button title="Bekor qilish" variant="outline" onPress={onClose} />
+          <Button title="Bekor qilish" variant="outline" onPress={onClose} disabled={isSubmitting} />
           <Button
-            title={doctorToEdit ? 'Saqlash' : 'Shifokorni Qo‘shish'}
+            title={isSubmitting ? 'Saqlanmoqda...' : (doctorToEdit ? 'Saqlash' : 'Shifokorni Qo‘shish')}
             variant="primary"
             onPress={handleSubmit}
+            disabled={isSubmitting}
           />
         </View>
       }

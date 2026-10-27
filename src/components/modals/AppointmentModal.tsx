@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Appointment, AppointmentStatus, Patient } from '../../types';
-import { formatUzbekPhoneNumber, getTodayDateString } from '../../utils/formatters';
+import { formatUzbekPhoneNumber, getTodayDateString, arePhoneNumbersEqual } from '../../utils/formatters';
 import { Select } from '../common/Input';
 import { UserIcon, PlusIcon, CheckIcon, SparklesIcon, ChevronDownIcon } from '../common/Icons';
 
@@ -94,6 +94,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const isInitializedRef = useRef(false);
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleTimeDropdown = () => {
     if (!timeDropdownOpen && timeDropdownRef.current) {
@@ -107,6 +108,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   useEffect(() => {
     if (!visible) {
       isInitializedRef.current = false;
+      setIsSubmitting(false);
       return;
     }
 
@@ -206,6 +208,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const newErrors: Record<string, string> = {};
 
     // 1. Bemor validatsiyasi
@@ -216,6 +220,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         }
         if (!newPatientPhone.trim()) {
           newErrors.newPatientPhone = 'Yangi bemor telefon raqamini kiriting';
+        } else {
+          const normNewPhone = formatUzbekPhoneNumber(newPatientPhone);
+          const duplicate = patients.find((p) => arePhoneNumbersEqual(p.phone, normNewPhone));
+          if (duplicate) {
+            newErrors.newPatientPhone = `Ushbu telefon raqam (${normNewPhone}) bilan "${duplicate.fullName}" allaqachon mavjud!`;
+          }
         }
       } else {
         if (!selectedPatientId) {
@@ -265,104 +275,110 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       srvName.includes('konsultatsiya va ko‘rik') ||
       srvName.includes("konsultatsiya va ko'rik");
 
-    // ============================================================
-    // A) TAHRIRLASH REJIMI (Edit Mode)
-    // ============================================================
-    if (isEditMode && appointmentToEdit) {
-      const res = updateAppointment(appointmentToEdit.id, {
-        patientPhone: phone.trim(),
-        doctorId,
-        doctorName: currentDoc ? currentDoc.fullName : appointmentToEdit.doctorName,
-        serviceId,
-        serviceName: currentSrv ? currentSrv.name : appointmentToEdit.serviceName,
-        servicePrice: currentSrv ? currentSrv.price : appointmentToEdit.servicePrice,
-        date,
-        time: savedTime,
-        notes: notes.trim(),
-      });
+    setIsSubmitting(true);
+    try {
+      // ============================================================
+      // A) TAHRIRLASH REJIMI (Edit Mode)
+      // ============================================================
+      if (isEditMode && appointmentToEdit) {
+        const res = updateAppointment(appointmentToEdit.id, {
+          patientPhone: phone.trim(),
+          doctorId,
+          doctorName: currentDoc ? currentDoc.fullName : appointmentToEdit.doctorName,
+          serviceId,
+          serviceName: currentSrv ? currentSrv.name : appointmentToEdit.serviceName,
+          servicePrice: currentSrv ? currentSrv.price : appointmentToEdit.servicePrice,
+          date,
+          time: savedTime,
+          notes: notes.trim(),
+        });
 
-      if (res.success) {
-        showToast('Qabul ma’lumotlari muvaffaqiyatli yangilandi!');
-        onClose();
-      } else if (res.error) {
-        setErrors({ form: res.error });
-      }
-      return;
-    }
-
-    // ============================================================
-    // B) YANGI QABUL YOZISH REJIMI (New Mode)
-    // ============================================================
-    if (patientMode === 'new') {
-      // 1. Yangi bemorni bazaga ro'yxatdan o'tkazish
-      const createdPatient = addPatient({
-        fullName: newPatientFullName.trim(),
-        phone: newPatientPhone.trim(),
-        gender: newPatientGender,
-        debt: 0,
-      });
-
-      // 2. Yangi bemor uchun "Birlamchi konsultatsiya va ko‘rik" bo'lsa status avtomatik "Jarayonda"
-      const initialStatus: AppointmentStatus = isPrimaryConsultation ? 'Jarayonda' : 'Kutilmoqda';
-
-      // 3. Qabulni yangi bemor profiliga bog'lab yaratish
-      const res = addAppointment({
-        patientId: createdPatient.id,
-        patientName: createdPatient.fullName,
-        patientPhone: createdPatient.phone,
-        doctorId,
-        doctorName: currentDoc?.fullName || 'Shifokor',
-        serviceId,
-        serviceName: currentSrv?.name || 'Xizmat',
-        servicePrice: currentSrv?.price || 0,
-        date,
-        time: savedTime,
-        durationMinutes: currentSrv?.durationMinutes || 30,
-        status: initialStatus,
-        notes: notes.trim(),
-      });
-
-      if (res.success) {
-        if (initialStatus === 'Jarayonda') {
-          showToast(
-            `Yangi bemor "${createdPatient.fullName}" ro‘yxatga olindi va qabul "Jarayonda" statusida yaratildi!`,
-            'success'
-          );
-        } else {
-          showToast(
-            `Yangi bemor "${createdPatient.fullName}" ro‘yxatga olindi va qabul rejalashtirildi!`,
-            'success'
-          );
+        if (res.success) {
+          showToast('Qabul ma’lumotlari muvaffaqiyatli yangilandi!');
+          onClose();
+        } else if (res.error) {
+          setErrors({ form: res.error });
         }
-        onClose();
-      } else if (res.error) {
-        setErrors({ form: res.error });
+        return;
       }
-    } else {
-      // Mavjud bemor uchun qabul rejalashtirish
-      const matchedPatient = patients.find((p) => p.id === selectedPatientId);
-      const res = addAppointment({
-        patientId: selectedPatientId,
-        patientName: matchedPatient ? matchedPatient.fullName : selectedPatientName,
-        patientPhone: phone.trim() || (matchedPatient?.phone || ''),
-        doctorId,
-        doctorName: currentDoc?.fullName || 'Shifokor',
-        serviceId,
-        serviceName: currentSrv?.name || 'Xizmat',
-        servicePrice: currentSrv?.price || 0,
-        date,
-        time: savedTime,
-        durationMinutes: currentSrv?.durationMinutes || 30,
-        status: 'Kutilmoqda',
-        notes: notes.trim(),
-      });
 
-      if (res.success) {
-        showToast('Qabul muvaffaqiyatli saqlandi!', 'success');
-        onClose();
-      } else if (res.error) {
-        setErrors({ form: res.error });
+      // ============================================================
+      // B) YANGI QABUL YOZISH REJIMI (New Mode)
+      // ============================================================
+      if (patientMode === 'new') {
+        const normNewPhone = formatUzbekPhoneNumber(newPatientPhone);
+        // 1. Yangi bemorni bazaga ro'yxatdan o'tkazish
+        const createdPatient = addPatient({
+          fullName: newPatientFullName.trim(),
+          phone: normNewPhone || newPatientPhone.trim(),
+          gender: newPatientGender,
+          debt: 0,
+        });
+
+        // 2. Yangi bemor uchun "Birlamchi konsultatsiya va ko‘rik" bo'lsa status avtomatik "Jarayonda"
+        const initialStatus: AppointmentStatus = isPrimaryConsultation ? 'Jarayonda' : 'Kutilmoqda';
+
+        // 3. Qabulni yangi bemor profiliga bog'lab yaratish
+        const res = addAppointment({
+          patientId: createdPatient.id,
+          patientName: createdPatient.fullName,
+          patientPhone: createdPatient.phone,
+          doctorId,
+          doctorName: currentDoc?.fullName || 'Shifokor',
+          serviceId,
+          serviceName: currentSrv?.name || 'Xizmat',
+          servicePrice: currentSrv?.price || 0,
+          date,
+          time: savedTime,
+          durationMinutes: currentSrv?.durationMinutes || 30,
+          status: initialStatus,
+          notes: notes.trim(),
+        });
+
+        if (res.success) {
+          if (initialStatus === 'Jarayonda') {
+            showToast(
+              `Yangi bemor "${createdPatient.fullName}" ro‘yxatga olindi va qabul "Jarayonda" statusida yaratildi!`,
+              'success'
+            );
+          } else {
+            showToast(
+              `Yangi bemor "${createdPatient.fullName}" ro‘yxatga olindi va qabul rejalashtirildi!`,
+              'success'
+            );
+          }
+          onClose();
+        } else if (res.error) {
+          setErrors({ form: res.error });
+        }
+      } else {
+        // Mavjud bemor uchun qabul rejalashtirish
+        const matchedPatient = patients.find((p) => p.id === selectedPatientId);
+        const res = addAppointment({
+          patientId: selectedPatientId,
+          patientName: matchedPatient ? matchedPatient.fullName : selectedPatientName,
+          patientPhone: phone.trim() || (matchedPatient?.phone || ''),
+          doctorId,
+          doctorName: currentDoc?.fullName || 'Shifokor',
+          serviceId,
+          serviceName: currentSrv?.name || 'Xizmat',
+          servicePrice: currentSrv?.price || 0,
+          date,
+          time: savedTime,
+          durationMinutes: currentSrv?.durationMinutes || 30,
+          status: 'Kutilmoqda',
+          notes: notes.trim(),
+        });
+
+        if (res.success) {
+          showToast('Qabul muvaffaqiyatli saqlandi!', 'success');
+          onClose();
+        } else if (res.error) {
+          setErrors({ form: res.error });
+        }
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1054,21 +1070,26 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             </button>
             <button
               type="submit"
+              disabled={isSubmitting}
               style={{
                 padding: '9px 26px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: '#0D9488',
+                backgroundColor: isSubmitting ? '#94A3B8' : '#0D9488',
                 color: '#FFFFFF',
                 fontSize: '13px',
                 fontWeight: 600,
-                cursor: 'pointer',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
                 transition: 'background-color 0.15s ease',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#0F766E')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#0D9488')}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) e.currentTarget.style.backgroundColor = '#0F766E';
+              }}
+              onMouseLeave={(e) => {
+                if (!isSubmitting) e.currentTarget.style.backgroundColor = '#0D9488';
+              }}
             >
-              {isEditMode ? 'Saqlash' : 'Qabulni saqlash'}
+              {isSubmitting ? 'Saqlanmoqda...' : isEditMode ? 'Saqlash' : 'Qabulni saqlash'}
             </button>
           </div>
         </form>

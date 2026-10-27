@@ -5,7 +5,7 @@ import { Button } from '../common/Button';
 import { Input, Select, DateInput } from '../common/Input';
 import { useApp } from '../../context/AppContext';
 import { Patient } from '../../types';
-import { formatUzbekPhoneNumber } from '../../utils/formatters';
+import { formatUzbekPhoneNumber, arePhoneNumbersEqual } from '../../utils/formatters';
 
 interface PatientModalProps {
   visible: boolean;
@@ -20,7 +20,7 @@ export const PatientModal: React.FC<PatientModalProps> = ({
   patientToEdit,
   onPatientCreated,
 }) => {
-  const { addPatient, updatePatient, currentUser } = useApp();
+  const { addPatient, updatePatient, currentUser, patients } = useApp();
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -30,8 +30,10 @@ export const PatientModal: React.FC<PatientModalProps> = ({
   const [notes, setNotes] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    setIsSubmitting(false);
     if (patientToEdit) {
       setFullName(patientToEdit.fullName);
       setPhone(patientToEdit.phone ? formatUzbekPhoneNumber(patientToEdit.phone) : '');
@@ -51,41 +53,62 @@ export const PatientModal: React.FC<PatientModalProps> = ({
   }, [patientToEdit, visible]);
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
+
     const newErrors: Record<string, string> = {};
 
     if (!fullName.trim()) newErrors.fullName = 'Bemorning to‘liq ismini kiriting';
-    if (!phone.trim() || phone.replace(/\D/g, '').length < 9) newErrors.phone = 'Telefon raqamini to‘liq kiriting';
+    if (!phone.trim() || phone.replace(/\D/g, '').length < 9) {
+      newErrors.phone = 'Telefon raqamini to‘liq kiriting';
+    }
+
+    const normPhone = formatUzbekPhoneNumber(phone);
+    // Takroriy telefon raqamli bemor mavjudligini tekshirish
+    if (normPhone) {
+      const duplicate = patients.find(
+        (p) => (patientToEdit ? p.id !== patientToEdit.id : true) && arePhoneNumbersEqual(p.phone, normPhone)
+      );
+      if (duplicate) {
+        newErrors.phone = `Ushbu telefon raqam (${normPhone}) bilan "${duplicate.fullName}" allaqachon mavjud!`;
+      }
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-
-    if (patientToEdit) {
-      updatePatient(patientToEdit.id, {
-        fullName: fullName.trim(),
-        phone: phone.trim(),
-        gender,
-        birthDate,
-        address: address.trim(),
-        notes: notes.trim(),
-      });
-      onClose();
-    } else {
-      const created = addPatient({
-        fullName: fullName.trim(),
-        phone: phone.trim(),
-        gender,
-        birthDate,
-        address: address.trim(),
-        notes: notes.trim(),
-        debt: 0,
-      });
-      if (onPatientCreated) {
-        onPatientCreated(created);
+    setIsSubmitting(true);
+    try {
+      if (patientToEdit) {
+        const ok = updatePatient(patientToEdit.id, {
+          fullName: fullName.trim(),
+          phone: normPhone,
+          gender,
+          birthDate,
+          address: address.trim(),
+          notes: notes.trim(),
+        });
+        if (ok) {
+          onClose();
+        }
+      } else {
+        const created = addPatient({
+          fullName: fullName.trim(),
+          phone: normPhone,
+          gender,
+          birthDate,
+          address: address.trim(),
+          notes: notes.trim(),
+          debt: 0,
+        });
+        if (onPatientCreated && created) {
+          onPatientCreated(created);
+        }
+        onClose();
       }
-      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -106,11 +129,13 @@ export const PatientModal: React.FC<PatientModalProps> = ({
             title="Bekor qilish"
             variant="outline"
             onPress={onClose}
+            disabled={isSubmitting}
           />
           <Button
-            title={patientToEdit ? 'Saqlash' : 'Bemorni Qo‘shish'}
+            title={isSubmitting ? 'Saqlanmoqda...' : (patientToEdit ? 'Saqlash' : 'Bemorni Qo‘shish')}
             variant="primary"
             onPress={handleSubmit}
+            disabled={isSubmitting}
           />
         </View>
       }

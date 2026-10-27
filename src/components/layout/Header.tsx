@@ -47,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
     showToast,
     dbStatus,
     serverStatus,
+    pendingSyncCount,
     syncWithBackend,
     isSyncing,
   } = useApp();
@@ -163,7 +164,13 @@ export const Header: React.FC<HeaderProps> = ({
               dbStatus === 'connected' ? styles.dbStatusTextOnline : styles.dbStatusTextOffline,
             ]}
           >
-            {isSyncing ? 'Sinxronlanmoqda...' : dbStatus === 'connected' ? 'PostgreSQL' : 'Offline'}
+            {isSyncing
+              ? 'Sinxronlanmoqda...'
+              : dbStatus === 'connected'
+              ? pendingSyncCount > 0
+                ? `PostgreSQL (${pendingSyncCount})`
+                : 'PostgreSQL'
+              : 'PostgreSQL uzilgan'}
           </Text>
         </TouchableOpacity>
 

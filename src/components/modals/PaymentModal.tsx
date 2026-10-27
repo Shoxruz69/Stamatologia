@@ -42,8 +42,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [notes, setNotes] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    setIsSubmitting(false);
     if (paymentToEdit) {
       setPatientId(paymentToEdit.patientId);
       setDoctorId(paymentToEdit.doctorId);
@@ -103,6 +105,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
+
     const newErrors: Record<string, string> = {};
 
     if (!patientId) newErrors.patientId = 'Bemorni tanlang';
@@ -122,43 +126,48 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     const status: PaymentStatus = debtNum === 0 ? 'To‘landi' : 'Qisman to‘langan';
     const currentTime = new Date().toTimeString().slice(0, 5);
 
-    if (paymentToEdit) {
-      updatePayment(paymentToEdit.id, {
-        appointmentId: paymentToEdit.appointmentId,
-        patientId,
-        patientName: selectedPatient.fullName,
-        doctorId,
-        doctorName: selectedDoctor.fullName,
-        serviceName: serviceName.trim(),
-        totalAmount: totalNum,
-        paidAmount: paidNum,
-        debtAmount: debtNum,
-        paymentMethod,
-        status,
-        date,
-        notes: notes.trim(),
-      });
-      onClose();
-    } else {
-      const created = addPayment({
-        patientId,
-        patientName: selectedPatient.fullName,
-        doctorId,
-        doctorName: selectedDoctor.fullName,
-        serviceName: serviceName.trim(),
-        totalAmount: totalNum,
-        paidAmount: paidNum,
-        debtAmount: debtNum,
-        paymentMethod,
-        status,
-        date,
-        time: currentTime,
-        notes: notes.trim(),
-      });
-      if (onPaymentSuccess) {
-        onPaymentSuccess(created);
+    setIsSubmitting(true);
+    try {
+      if (paymentToEdit) {
+        updatePayment(paymentToEdit.id, {
+          appointmentId: paymentToEdit.appointmentId,
+          patientId,
+          patientName: selectedPatient.fullName,
+          doctorId,
+          doctorName: selectedDoctor.fullName,
+          serviceName: serviceName.trim(),
+          totalAmount: totalNum,
+          paidAmount: paidNum,
+          debtAmount: debtNum,
+          paymentMethod,
+          status,
+          date,
+          notes: notes.trim(),
+        });
+        onClose();
+      } else {
+        const created = addPayment({
+          patientId,
+          patientName: selectedPatient.fullName,
+          doctorId,
+          doctorName: selectedDoctor.fullName,
+          serviceName: serviceName.trim(),
+          totalAmount: totalNum,
+          paidAmount: paidNum,
+          debtAmount: debtNum,
+          paymentMethod,
+          status,
+          date,
+          time: currentTime,
+          notes: notes.trim(),
+        });
+        if (onPaymentSuccess) {
+          onPaymentSuccess(created);
+        }
+        onClose();
       }
-      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -171,11 +180,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       maxWidth={620}
       footer={
         <View style={styles.footerRow}>
-          <Button title="Bekor qilish" variant="outline" onPress={onClose} />
+          <Button title="Bekor qilish" variant="outline" onPress={onClose} disabled={isSubmitting} />
           <Button
-            title={paymentToEdit ? 'Saqlash' : 'To‘lovni Qabul Qilish'}
+            title={isSubmitting ? 'Saqlanmoqda...' : (paymentToEdit ? 'Saqlash' : 'To‘lovni Qabul Qilish')}
             variant="primary"
             onPress={handleSubmit}
+            disabled={isSubmitting}
           />
         </View>
       }
