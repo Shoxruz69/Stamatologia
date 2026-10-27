@@ -130,6 +130,13 @@ class DatabaseManager {
         console.error('[PostgreSQL] Boshlang‘ich ma’lumotlarni kiritishda xatolik:', seedErr.message);
       }
 
+      // 5. Bir martalik tozalash migratsiyasi (Render va tashqi bazadagi eski test yozuvlarini 0 ga tushirish)
+      try {
+        await this.cleanTestDataOnce();
+      } catch (cleanErr) {
+        console.error('[PostgreSQL] Test tranzaksiyalarini tozalashda xatolik:', cleanErr.message);
+      }
+
       return true;
     })();
 
@@ -274,6 +281,62 @@ class DatabaseManager {
     } catch (err) {
       console.warn('[PostgreSQL] Birlamchi sozlamalarni tekshirishda xatolik:', err.message);
     }
+  }
+
+  /**
+   * Baza birinchi marta yangilanganda test ma'lumotlarini (bemorlar, qabullar, to'lovlar) bir martalik tozalash.
+   * Bu Render va tashqi bazada to'plangan soxta ma'lumotlarni 0 ga tushirishni ta'minlaydi.
+   * Xodimlar (Menejer hisobi, PIN), shifokorlar, xizmatlar va sozlamalarga TEGILMAYDI!
+   */
+  async cleanTestDataOnce() {
+    try {
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS system_migrations (
+          name VARCHAR(100) PRIMARY KEY,
+          applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+      `);
+
+      const migrationName = 'clean_initial_test_data_2026_10';
+      const checkRes = await this.query(
+        'SELECT name FROM system_migrations WHERE name = $1',
+        [migrationName]
+      );
+
+      if (checkRes.rows.length === 0) {
+        console.log('[PostgreSQL] Baza yangidek holatga keltirilmoqda (test tranzaksiyalari tozalanmoqda)...');
+        await this.withTransaction(async (client) => {
+          await client.query('DELETE FROM payments');
+          await client.query('DELETE FROM appointments');
+          await client.query('DELETE FROM patients');
+          await client.query(
+            "DELETE FROM audit_logs WHERE entity_type IN ('patient', 'appointment', 'payment')"
+          );
+          await client.query(
+            'INSERT INTO system_migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
+            [migrationName]
+          );
+        });
+        console.log('[PostgreSQL] Test tranzaksiyalari muvaffaqiyatli tozalandi! Baza yangi klinika uchun tayyor.');
+      }
+    } catch (err) {
+      console.warn('[PostgreSQL] cleanTestDataOnce bajarilishida xatolik:', err.message);
+    }
+  }
+
+  /**
+   * Admin buyrug'i orqali barcha tranzaksiyalarni (bemorlar, qabullar, to'lovlar) 0 ga tushirish
+   */
+  async cleanAllTransactions() {
+    return this.withTransaction(async (client) => {
+      await client.query('DELETE FROM payments');
+      await client.query('DELETE FROM appointments');
+      await client.query('DELETE FROM patients');
+      await client.query(
+        "DELETE FROM audit_logs WHERE entity_type IN ('patient', 'appointment', 'payment')"
+      );
+      return { success: true };
+    });
   }
 }
 

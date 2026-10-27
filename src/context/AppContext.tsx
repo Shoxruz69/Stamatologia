@@ -20,6 +20,7 @@ import {
   saveServices,
   saveSettings,
   resetAllDataToDefault,
+  clearClientTransactions,
   getLocalMigrationPayload,
   downloadLocalBackupFile,
   loadSyncQueue,
@@ -121,6 +122,7 @@ interface AppContextType {
   // Sozlamalar
   updateSettings: (newSettings: Partial<ClinicSettings>) => void;
   resetAllData: () => void;
+  cleanAllTestData: () => Promise<boolean>;
 
   // Savdo tahlili va Hisobotlar uchun umumiy sana va shifokor filtrlari
   filterPreset: 'today' | 'week' | 'month' | 'custom';
@@ -1287,6 +1289,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Barcha demo ma’lumotlar boshlang‘ich holatga qaytarildi!', 'info');
   };
 
+  const cleanAllTestData = async (): Promise<boolean> => {
+    try {
+      // 1. Backend PostgreSQL bazasidan tozalash
+      try {
+        await apiClient.cleanTestData();
+      } catch (err: any) {
+        console.warn('Backend tozalashda xatolik:', err?.message || err);
+      }
+
+      // 2. Lokal xotira va state'ni 0 ga tushirish
+      clearClientTransactions();
+      setPatients([]);
+      setAppointments([]);
+      setPayments([]);
+      setPendingSyncCount(0);
+
+      showToast(
+        'Barcha test bemorlar, qabullar va to‘lovlar tozalandi! Tizim yangi klinika uchun tayyor.',
+        'success'
+      );
+      return true;
+    } catch (err: any) {
+      showToast('Tozalashda xatolik: ' + (err?.message || 'Noma’lum xatolik'), 'error');
+      return false;
+    }
+  };
+
   // --- AUTH ---
   const logout = () => {
     setCurrentUser(null);
@@ -1384,6 +1413,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refundPayment,
         updateSettings,
         resetAllData,
+        cleanAllTestData,
         toasts,
         showToast,
         dismissToast,

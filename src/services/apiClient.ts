@@ -368,4 +368,11 @@ export const apiClient = {
   exportDatabaseBackup: async (): Promise<any> => {
     return request<any>('/api/migrate/export');
   },
+
+  // 11. Barcha test ma'lumotlarini tozalash (Admin - Yangidek qilish)
+  cleanTestData: async (): Promise<{ ok: boolean; message: string }> => {
+    return request<{ ok: boolean; message: string }>('/api/admin/clean-transactions', {
+      method: 'POST',
+    });
+  },
 };

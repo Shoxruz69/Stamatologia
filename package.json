@@ -8,7 +8,7 @@
     "web": "expo start --web",
     "expo:start": "expo start",
     "build:web": "expo export -p web",
-    "push": "git add -A && git commit -m \"fix: offline sync, idempotency, duplicate phone protection and real postgresql ping\" && git push origin main"
+    "push": "git add -A && git commit -m \"chore: clean initial test data, add automatic cleanup migration and admin reset\" && git push origin main"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.9",

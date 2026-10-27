@@ -107,6 +107,17 @@ export const resetAllDataToDefault = () => {
 };
 
 /**
+ * Klient tomondagi barcha tranzaksiyalarni (bemorlar, qabullar, to'lovlar va sync navbatini) tozalash.
+ * Shifokorlar, xizmatlar va sozlamalarga tegilmaydi.
+ */
+export const clearClientTransactions = () => {
+  savePatients([]);
+  saveAppointments([]);
+  savePayments([]);
+  saveSyncQueue([]);
+};
+
+/**
  * -------------------------------------------------------------
  * MAVJUD LOKAL MA'LUMOTLARNI ZAXIRALASH VA MIGRATSIYA FUNKSIYALARI
  * -------------------------------------------------------------

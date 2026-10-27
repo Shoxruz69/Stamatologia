@@ -1578,6 +1578,29 @@ async function handleApiRequest(req, res, pathname, queryParams) {
     }
   }
 
+  // 14. BARCHA TRANZAKSIYALARNI TOZALASH (Admin - Barcha test bemorlar, qabullar va to'lovlarni 0 ga tushirish)
+  if (pathname === '/api/admin/clean-transactions' && req.method === 'POST') {
+    try {
+      if (!db.isReady()) {
+        return sendError(res, 503, 'PostgreSQL ma’lumotlar bazasi ulanmagan', 'DB_OFFLINE');
+      }
+
+      await db.cleanAllTransactions();
+      await auditLogger.log({
+        action: 'DATA_CLEANUP_RESET',
+        entityType: 'system',
+        details: { resetBy: 'admin', timestamp: new Date().toISOString() },
+      });
+
+      return sendJson(res, 200, {
+        ok: true,
+        message: 'Barcha test bemorlar, qabullar va to‘lovlar muvaffaqiyatli tozalandi. Tizim yangi boshlanish uchun tayyor!',
+      });
+    } catch (err) {
+      return sendError(res, 500, 'Ma’lumotlarni tozalashda xatolik: ' + err.message);
+    }
+  }
+
   // Not found for other /api routes
   return sendError(res, 404, `API marshruti topilmadi: ${req.method} ${pathname}`, 'NOT_FOUND');
 }
