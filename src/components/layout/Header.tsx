@@ -142,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* O'ng qism: Baza holati va "SH" Profil Avatari */}
       <View style={styles.rightSection}>
-        {/* PostgreSQL / Server Holati Ko'rsatkichi */}
+        {/* Supabase / Server Holati Ko'rsatkichi */}
         <TouchableOpacity
           style={[
             styles.dbStatusPill,
@@ -167,10 +167,10 @@ export const Header: React.FC<HeaderProps> = ({
             {isSyncing
               ? 'Sinxronlanmoqda...'
               : dbStatus === 'connected'
-              ? pendingSyncCount > 0
-                ? `PostgreSQL (${pendingSyncCount})`
-                : 'PostgreSQL'
-              : 'PostgreSQL uzilgan'}
+                ? pendingSyncCount > 0
+                  ? `Supabase (${pendingSyncCount})`
+                  : 'Supabase'
+                : 'Supabase uzilgan'}
           </Text>
         </TouchableOpacity>
 
@@ -233,8 +233,8 @@ export const Header: React.FC<HeaderProps> = ({
                     {currentUser?.role === 'Menejer'
                       ? 'Klinika menejeri'
                       : currentUser?.role === 'Shifokor'
-                      ? 'Stomatolog-shifokor'
-                      : 'Hamshira'}
+                        ? 'Stomatolog-shifokor'
+                        : 'Hamshira'}
                   </Text>
                 </View>
               </View>

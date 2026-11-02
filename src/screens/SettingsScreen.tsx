@@ -28,7 +28,6 @@ import {
   LogOutIcon,
   UsersIcon,
   AlertTriangleIcon,
-  CheckCircleIcon,
 } from '../components/common/Icons';
 import {
   getSecurityAccessCodes,
@@ -41,7 +40,6 @@ import {
   SecurityAccessCodes,
 } from '../utils/staffData';
 import { StaffMember } from '../types';
-import { getApiBaseUrl, getDisplayApiBaseUrl } from '../services/apiClient';
 
 export const SettingsScreen: React.FC = () => {
   const {
@@ -51,19 +49,11 @@ export const SettingsScreen: React.FC = () => {
     currentUser,
     updateCurrentUser,
     showToast,
-    serverStatus,
     dbStatus,
     lastSyncError,
-    isSyncing,
-    syncWithBackend,
-    migrateLocalDataToPostgres,
-    downloadLocalBackup,
+    patients,
+    appointments,
   } = useApp();
-
-  const [isMigrating, setIsMigrating] = useState(false);
-  const [migrationResult, setMigrationResult] = useState<any>(null);
-  const [showMigrateConfirm, setShowMigrateConfirm] = useState(false);
-  const [showLegacyMigration, setShowLegacyMigration] = useState(false);
 
   const isManager = currentUser?.role === 'Menejer';
 
@@ -752,15 +742,14 @@ export const SettingsScreen: React.FC = () => {
             </>
           )}
 
-          {/* BO'LIM: MARKAZIY POSTGRESQL BAZA & ZAXIRA BOSHQARUVI */}
-          {/* BO'LIM 2: MARKAZIY POSTGRESQL BAZA (Render / Bulutli) */}
+          {/* BO'LIM: SUPABASE BULUTLI MA'LUMOTLAR BAZASI */}
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View style={styles.sectionBadgeTitleRow}>
-                <View style={[styles.sectionBadgeIcon, { backgroundColor: '#EFF6FF' }]}>
-                  <SettingsIcon size={18} color="#2563EB" />
+                <View style={[styles.sectionBadgeIcon, { backgroundColor: '#ECFDF5' }]}>
+                  <ShieldCheckIcon size={18} color="#059669" />
                 </View>
-                <Text style={styles.cardTitle}>Markaziy PostgreSQL Baza & Bulutli Ulanish</Text>
+                <Text style={styles.cardTitle}>Supabase Ma’lumotlar Bazasi</Text>
               </View>
 
               <View
@@ -781,24 +770,20 @@ export const SettingsScreen: React.FC = () => {
                     dbStatus === 'connected' ? styles.dbHeaderBadgeTextConnected : styles.dbHeaderBadgeTextOffline,
                   ]}
                 >
-                  {dbStatus === 'connected' ? 'PostgreSQL Faol' : 'Baza bilan aloqa uzilgan'}
+                  {dbStatus === 'connected' ? 'Supabase Faol' : 'Aloqa uzilgan'}
                 </Text>
               </View>
             </View>
 
             <Text style={styles.cardSubtitle}>
-              Barcha kompyuter va planshetlar internet orqali Render bulutidagi yagona markaziy bazaga ulanib ishlaydi.
+              Barcha bemorlar, qabullar va to‘lovlar yagona xavfsiz Supabase bulutli ma’lumotlar bazasida saqlanadi.
             </Text>
 
             {/* Baza holati kartasi */}
             <View style={styles.dbInfoBox}>
               <View style={styles.dbInfoRow}>
                 <Text style={styles.dbInfoLabel}>Ma’lumotlar bazasi:</Text>
-                <Text style={styles.dbInfoValue}>PostgreSQL (Render Managed Database)</Text>
-              </View>
-              <View style={styles.dbInfoRow}>
-                <Text style={styles.dbInfoLabel}>Backend API manzili:</Text>
-                <Text style={styles.dbInfoValue}>{getDisplayApiBaseUrl()}</Text>
+                <Text style={styles.dbInfoValue}>Supabase (Cloud PostgreSQL)</Text>
               </View>
               <View style={styles.dbInfoRow}>
                 <Text style={styles.dbInfoLabel}>Ulanish holati:</Text>
@@ -809,9 +794,17 @@ export const SettingsScreen: React.FC = () => {
                   ]}
                 >
                   {dbStatus === 'connected'
-                    ? 'Markaziy PostgreSQL bazasiga muvaffaqiyatli ulangan'
-                    : 'Baza ulanmagan (Serverga ulanib bo‘lmadi)'}
+                    ? 'Supabase bulutli bazasiga muvaffaqiyatli ulangan'
+                    : 'Baza bilan aloqa yo‘q'}
                 </Text>
+              </View>
+              <View style={styles.dbInfoRow}>
+                <Text style={styles.dbInfoLabel}>Saqlangan bemorlar:</Text>
+                <Text style={styles.dbInfoValue}>{patients.length} nafar</Text>
+              </View>
+              <View style={styles.dbInfoRow}>
+                <Text style={styles.dbInfoLabel}>Rejalashtirilgan qabullar:</Text>
+                <Text style={styles.dbInfoValue}>{appointments.length} ta</Text>
               </View>
               {lastSyncError && (
                 <View style={styles.dbErrorNotice}>
@@ -822,94 +815,6 @@ export const SettingsScreen: React.FC = () => {
                 </View>
               )}
             </View>
-
-            {/* Ulanishni tekshirish va zaxira boshqaruvi */}
-            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Button
-                title={isSyncing ? 'Tekshirilmoqda...' : 'Ulanishni Qayta Tekshirish'}
-                variant="primary"
-                disabled={isSyncing}
-                onPress={syncWithBackend}
-              />
-              <Button
-                title={showLegacyMigration ? 'Zaxira bo‘limini yashirish' : 'Eski zaxirani import qilish (Zarur bo‘lsa)'}
-                variant="outline"
-                onPress={() => setShowLegacyMigration(!showLegacyMigration)}
-              />
-            </View>
-
-            {/* Eski ma'lumotlarni import qilish (faqat ochilganda ko'rinadi) */}
-            {showLegacyMigration && (
-              <View style={[styles.migrationActionsContainer, { marginTop: 16 }]}>
-                <View style={styles.migrationActionCard}>
-                  <Text style={styles.migrationActionTitle}>Lokal Zaxira Nusxasini Saqlash</Text>
-                  <Text style={styles.migrationActionDesc}>
-                    Brauzer xotirasidagi ma’lumotlarni xavfsiz JSON zaxira fayl qilib yuklab oling.
-                  </Text>
-                  <Button
-                    title="Lokal Zaxira Faylini Yuklab Olish (.json)"
-                    variant="outline"
-                    onPress={downloadLocalBackup}
-                  />
-                </View>
-
-                <View style={styles.migrationActionCard}>
-                  <Text style={styles.migrationActionTitle}>PostgreSQL Bazasiga Import Qilish</Text>
-                  <Text style={styles.migrationActionDesc}>
-                    Eski lokal ma’lumotlarni markaziy PostgreSQL bazasiga import qiling.
-                  </Text>
-                  <Button
-                    title={isMigrating ? 'Ko‘chirilmoqda...' : 'Markaziy Bazaga Import Qilish'}
-                    variant="primary"
-                    disabled={isMigrating}
-                    onPress={() => setShowMigrateConfirm(true)}
-                  />
-                </View>
-              </View>
-            )}
-
-            {/* Migratsiya natijasi / Solishtirish hisoboti (Reconciliation) */}
-            {migrationResult && migrationResult.success && (
-              <View style={styles.reconciliationBox}>
-                <View style={styles.reconciliationHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <CheckCircleIcon size={16} color="#059669" />
-                    <Text style={styles.reconciliationTitle}>Migratsiya va Solishtirish Natijasi</Text>
-                  </View>
-                </View>
-                <Text style={styles.reconciliationDesc}>
-                  Lokal xotiradagi barcha yozuvlar tekshirilib, markaziy PostgreSQL bazasiga kiritildi:
-                </Text>
-                <View style={styles.reconciliationGrid}>
-                  <View style={styles.reconciliationCol}>
-                    <Text style={styles.reconciliationVal}>
-                      {migrationResult.details?.imported?.patients ?? '—'}
-                    </Text>
-                    <Text style={styles.reconciliationLabel}>Ko‘chirilgan Bemorlar</Text>
-                  </View>
-                  <View style={styles.reconciliationCol}>
-                    <Text style={styles.reconciliationVal}>
-                      {migrationResult.details?.imported?.appointments ?? '—'}
-                    </Text>
-                    <Text style={styles.reconciliationLabel}>Ko‘chirilgan Qabullar</Text>
-                  </View>
-                  <View style={styles.reconciliationCol}>
-                    <Text style={styles.reconciliationVal}>
-                      {migrationResult.details?.imported?.payments ?? '—'}
-                    </Text>
-                    <Text style={styles.reconciliationLabel}>Ko‘chirilgan To‘lovlar</Text>
-                  </View>
-                  <View style={styles.reconciliationCol}>
-                    <Text style={styles.reconciliationVal}>
-                      {migrationResult.details?.databaseTotals?.totalRevenue
-                        ? `${migrationResult.details.databaseTotals.totalRevenue.toLocaleString()} so‘m`
-                        : '0 so‘m'}
-                    </Text>
-                    <Text style={styles.reconciliationLabel}>Bazadagi Jami Tushum</Text>
-                  </View>
-                </View>
-              </View>
-            )}
           </View>
         </>
       )}
@@ -962,23 +867,6 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-
-      {/* Migratsiya tasdiq dialogi */}
-      <ConfirmDialog
-        visible={showMigrateConfirm}
-        title="PostgreSQL Bazasiga Ko‘chirish"
-        message="Lokal xotiradagi barcha bemorlar, qabullar va to‘lovlar markaziy PostgreSQL bazasiga import qilinadi. Takroriy yozuvlar yaratilmaydi va mavjud ma’lumotlar yo‘qolmaydi. Davom ettirasizmi?"
-        confirmText="Ko‘chirishni boshlash"
-        isDestructive={false}
-        onConfirm={async () => {
-          setShowMigrateConfirm(false);
-          setIsMigrating(true);
-          const res = await migrateLocalDataToPostgres();
-          setIsMigrating(false);
-          setMigrationResult(res);
-        }}
-        onCancel={() => setShowMigrateConfirm(false)}
-      />
     </ScrollView>
   );
 };

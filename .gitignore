@@ -1,5 +1,6 @@
 server/data/postgres_db/
 server/backups/
+backups/
 server/clinicData.json
 server/telegramConnections.json
 # Dependencies
@@ -13,6 +14,10 @@ web-build/
 .env.local
 .env.*.local
 sms-config.json
+*.pem
+*.key
+dump*.json
+backup*.json
 
 # Logs
 *.log

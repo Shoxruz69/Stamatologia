@@ -1,25 +1,28 @@
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
-const { PGlite } = require('@electric-sql/pglite');
 const { hashPin } = require('./cryptoUtils');
 
 class DatabaseManager {
   constructor() {
     this.pool = null;
-    this.pglite = null;
-    this.isEmbedded = false;
     this.isConnected = false;
     this.lastError = null;
     this.initPromise = null;
   }
 
   getPoolConfig() {
-    if (process.env.DATABASE_URL) {
+    const connectionString =
+      process.env.DATABASE_URL ||
+      process.env.SUPABASE_DATABASE_URL ||
+      process.env.TARGET_DATABASE_URL;
+
+    if (connectionString) {
       const isCloudOrRender =
         process.env.RENDER === 'true' ||
         process.env.NODE_ENV === 'production' ||
-        (!process.env.DATABASE_URL.includes('localhost') && !process.env.DATABASE_URL.includes('127.0.0.1'));
+        (!connectionString.includes('localhost') && !connectionString.includes('127.0.0.1'));
 
       const useSsl =
         process.env.DATABASE_SSL === 'false'
@@ -27,11 +30,11 @@ class DatabaseManager {
           : isCloudOrRender || process.env.DATABASE_SSL === 'true';
 
       return {
-        connectionString: process.env.DATABASE_URL,
+        connectionString,
         ssl: useSsl ? { rejectUnauthorized: false } : false,
         max: parseInt(process.env.PGMAX || '20', 10),
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 10000, // Bulutli/Render PostgreSQL ulanishi uchun 10s timeout
+        connectionTimeoutMillis: 10000,
       };
     }
 
@@ -40,10 +43,10 @@ class DatabaseManager {
       port: parseInt(process.env.PGPORT || process.env.DB_PORT || '5432', 10),
       user: process.env.PGUSER || process.env.DB_USER || 'postgres',
       password: process.env.PGPASSWORD || process.env.DB_PASSWORD || 'postgres',
-      database: process.env.PGDATABASE || process.env.DB_NAME || 'dentacare',
+      database: process.env.PGDATABASE || process.env.DB_NAME || 'postgres',
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 5000,
     };
   }
 
@@ -51,90 +54,50 @@ class DatabaseManager {
     if (this.initPromise) return this.initPromise;
 
     this.initPromise = (async () => {
-      // 1. Birinchi navbatda tashqi/bulutli PostgreSQL (Render DATABASE_URL yoki Docker) ni tekshiramiz
       const config = this.getPoolConfig();
-      const hostLabel = config.connectionString
-        ? 'DATABASE_URL (Render/Cloud PostgreSQL)'
-        : `${config.host}:${config.port}/${config.database}`;
+      const isSupabase =
+        (config.connectionString && config.connectionString.includes('supabase')) ||
+        Boolean(process.env.SUPABASE_DATABASE_URL);
 
-      let connectedExternal = false;
+      console.log(`[Supabase] Supabase ma’lumotlar bazasiga ulanish tekshirilmoqda...`);
+
       try {
-        console.log(`[PostgreSQL] PostgreSQL serveriga ulanish tekshirilmoqda (${hostLabel})...`);
         const tempPool = new Pool(config);
         const client = await tempPool.connect();
-        const res = await client.query('SELECT NOW() as current_time, current_database() as db_name, version()');
+        const res = await client.query('SELECT NOW() as current_time, current_database() as db_name');
         client.release();
 
         this.pool = tempPool;
-        this.isEmbedded = false;
         this.isConnected = true;
         this.lastError = null;
-        connectedExternal = true;
 
         this.pool.on('error', (err) => {
-          console.error('[PostgreSQL] Kutilmagan pul xatosi:', err.message);
+          console.error('[Supabase] Ulanish pulida xatolik yuz berdi:', err.message);
           this.isConnected = false;
           this.lastError = err.message;
         });
 
-        console.log(`[PostgreSQL] Baza muvaffaqiyatli ulandi! (${hostLabel})`);
-        console.log(`[PostgreSQL] Baza nomi: ${res.rows[0].db_name}, Vaqt: ${res.rows[0].current_time}`);
-      } catch (externalErr) {
-        console.warn(`[PostgreSQL] Tashqi/Render PostgreSQL ga ulanmadi (${externalErr.message}).`);
-
-        if (process.env.RENDER === 'true' || process.env.NODE_ENV === 'production' || process.env.DATABASE_URL) {
-          console.error(`[PostgreSQL] DIQQAT: Render ishlab chiqarish muhitida doimiy Render PostgreSQL bazasiga ulanish zarur!`);
-          console.error(`[PostgreSQL] Render boshqaruv panelida 'DATABASE_URL' to‘g‘ri kiritilganligini tekshiring.`);
-          this.isConnected = false;
-          this.lastError = `Render PostgreSQL bazasiga ulanib bo‘lmadi: ${externalErr.message}. Iltimos, Render boshqaruv panelida DATABASE_URL sozlamasini tekshiring.`;
-          return false;
-        }
-
-        console.log(`[PostgreSQL] Ichki zaxira PostgreSQL dvigateli (PGlite 18.6 WASM) ishga tushirilmoqda...`);
+        console.log(`[Supabase] Supabase PostgreSQL bazasi muvaffaqiyatli ulandi!`);
+        console.log(`[Supabase] Baza: ${res.rows[0].db_name}, Server vaqti: ${res.rows[0].current_time}`);
+      } catch (err) {
+        console.error(`[Supabase] Supabase bazasiga ulanib bo‘lmadi:`, err.message);
+        this.isConnected = false;
+        this.lastError = `Supabase bazasiga ulanishda xatolik: ${err.message}. Render muhitida DATABASE_URL to‘g‘ri kiritilganini tekshiring.`;
+        return false;
       }
 
-      // 2. Agar tashqi baza bo'lmasa, mahalliy PGlite PostgreSQL dvigatelini ishga tushiramiz
-      if (!connectedExternal) {
-        try {
-          const dataDir = path.join(__dirname, 'data', 'postgres_db');
-          if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
-          }
-
-          this.pglite = new PGlite(dataDir);
-          await this.pglite.waitReady;
-          this.isEmbedded = true;
-          this.isConnected = true;
-          this.lastError = null;
-          console.log(`[PostgreSQL] Doimiy PostgreSQL (PGlite) muvaffaqiyatli ishga tushdi!`);
-          console.log(`[PostgreSQL] Saqlash katalogi: ${dataDir}`);
-        } catch (embeddedErr) {
-          this.isConnected = false;
-          this.lastError = embeddedErr.message;
-          console.error(`[PostgreSQL] PostgreSQL dvigatelini ishga tushirib bo‘lmadi:`, embeddedErr.message);
-          return false;
-        }
-      }
-
-      // 3. Sxema migratsiyasini bajarish
+      // Sxemani tekshirish
       try {
         await this.runMigrations();
       } catch (migErr) {
-        console.error('[PostgreSQL] Sxema migratsiyasida xatolik:', migErr.message);
+        console.error('[Supabase] Sxema tekshiruvida xatolik:', migErr.message);
       }
 
-      // 4. Boshlang'ich ma'lumotlarni tekshirish va tozalash
+      // Boshlang'ich sozlamalar mavjudligini ta'minlash
       try {
         await this.seedInitialDataIfEmpty();
       } catch (seedErr) {
-        console.error('[PostgreSQL] Boshlang‘ich ma’lumotlarni kiritishda xatolik:', seedErr.message);
-      }
-
-      // 5. Bir martalik tozalash migratsiyasi (Render va tashqi bazadagi eski test yozuvlarini 0 ga tushirish)
-      try {
-        await this.cleanTestDataOnce();
-      } catch (cleanErr) {
-        console.error('[PostgreSQL] Test tranzaksiyalarini tozalashda xatolik:', cleanErr.message);
+        console.error('[Supabase] Boshlang‘ich sozlamalarni tekshirishda xatolik:', seedErr.message);
       }
 
       return true;
@@ -144,32 +107,23 @@ class DatabaseManager {
   }
 
   isReady() {
-    return this.isConnected && (this.pool !== null || this.pglite !== null);
+    return this.isConnected && this.pool !== null;
   }
 
   async ping() {
-    if (!this.isConnected || (!this.pool && !this.pglite)) {
-      return { connected: false, error: this.lastError || 'PostgreSQL bazasi ulanmagan' };
+    if (!this.isConnected || !this.pool) {
+      return { connected: false, error: this.lastError || 'Supabase bazasi ulanmagan' };
     }
     try {
-      if (this.isEmbedded && this.pglite) {
-        await this.pglite.query('SELECT 1 as ping');
+      const client = await this.pool.connect();
+      try {
+        await client.query('SELECT 1 as ping');
         this.isConnected = true;
         this.lastError = null;
         return { connected: true };
+      } finally {
+        client.release();
       }
-      if (this.pool) {
-        const client = await this.pool.connect();
-        try {
-          await client.query('SELECT 1 as ping');
-          this.isConnected = true;
-          this.lastError = null;
-          return { connected: true };
-        } finally {
-          client.release();
-        }
-      }
-      return { connected: false, error: 'PostgreSQL ulanish puli mavjud emas' };
     } catch (err) {
       this.isConnected = false;
       this.lastError = err.message;
@@ -180,70 +134,47 @@ class DatabaseManager {
   getDbStatus() {
     return {
       connected: this.isConnected,
-      engine: 'PostgreSQL',
-      mode: this.isEmbedded
-        ? 'PostgreSQL (Embedded PGlite 18.6)'
-        : (process.env.DATABASE_URL ? 'PostgreSQL (Render / Managed Cloud)' : 'PostgreSQL (External Server)'),
+      engine: 'Supabase (PostgreSQL)',
+      mode: 'Supabase Cloud Database',
       lastError: this.lastError,
-      database: this.isEmbedded ? 'dentacare (pglite)' : (process.env.PGDATABASE || process.env.DB_NAME || 'dentacare'),
-      host: this.isEmbedded ? 'embedded' : (process.env.DATABASE_URL ? 'cloud-db' : (process.env.PGHOST || '127.0.0.1')),
-      port: this.isEmbedded ? 3000 : parseInt(process.env.PGPORT || process.env.DB_PORT || '5432', 10),
+      database: 'postgres',
+      host: 'Supabase Cloud',
+      port: 5432,
     };
   }
 
   async runMigrations() {
     const schemaFile = path.join(__dirname, 'schema.sql');
     if (!fs.existsSync(schemaFile)) {
-      console.warn('[PostgreSQL] schema.sql fayli topilmadi!');
       return;
     }
+
+    if (!this.pool) return;
 
     const sql = fs.readFileSync(schemaFile, 'utf8');
-
-    if (this.isEmbedded && this.pglite) {
-      await this.pglite.exec(sql);
-      console.log('[PostgreSQL] Sxema va jadvallar muvaffaqiyatli tekshirildi/yaratildi (PGlite).');
-      return;
-    }
-
-    if (this.pool) {
-      const client = await this.pool.connect();
-      try {
-        await client.query('BEGIN');
-        await client.query(sql);
-        await client.query('COMMIT');
-        console.log('[PostgreSQL] Sxema va jadvallar muvaffaqiyatli tekshirildi/yaratildi (External Pool).');
-      } catch (err) {
-        await client.query('ROLLBACK');
-        console.error('[PostgreSQL] Sxema yaratishda xatolik:', err);
-        throw err;
-      } finally {
-        client.release();
-      }
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(sql);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.warn('[Supabase] Sxema tekshiruvi xabari:', err.message);
+    } finally {
+      client.release();
     }
   }
 
   async query(text, params = []) {
     if (!this.isReady()) {
-      throw new Error(`PostgreSQL bazasi ulanmagan: ${this.lastError || 'Server tayyor emas'}`);
+      throw new Error(`Supabase bazasi ulanmagan: ${this.lastError || 'Server tayyor emas'}`);
     }
-
-    if (this.isEmbedded && this.pglite) {
-      return this.pglite.query(text, params);
-    }
-
     return this.pool.query(text, params);
   }
 
   async withTransaction(callback) {
     if (!this.isReady()) {
-      throw new Error(`PostgreSQL bazasi ulanmagan: ${this.lastError || 'Server tayyor emas'}`);
-    }
-
-    if (this.isEmbedded && this.pglite) {
-      return this.pglite.transaction(async (tx) => {
-        return callback(tx);
-      });
+      throw new Error(`Supabase bazasi ulanmagan: ${this.lastError || 'Server tayyor emas'}`);
     }
 
     const client = await this.pool.connect();
@@ -260,16 +191,8 @@ class DatabaseManager {
     }
   }
 
-  /**
-   * Baza bo'sh bo'lganda faqat tizim sozlamalari jadvalini tekshirish.
-   * HAQIQIY ISHLATISH QOIDASI:
-   * Hech qanday soxta demo bemorlar, qabullar, to'lovlar, demo shifokorlar,
-   * soxta xizmatlar yoki standart PIN/parolli xodimlar avtomatik kiritilmaydi.
-   * Klinika birinchi ishga tushirishda o'z adminini, shifokorlarini va xizmatlarini o'zi kiritadi.
-   */
   async seedInitialDataIfEmpty() {
     try {
-      // Faqat asosiy clinic_settings qatori mavjudligini ta'minlash (agar hali yaratilmagan bo'lsa)
       const setRes = await this.query('SELECT COUNT(*) as cnt FROM clinic_settings WHERE id = $1', ['default']);
       if (parseInt(setRes.rows[0].cnt, 10) === 0) {
         await this.query(
@@ -279,64 +202,8 @@ class DatabaseManager {
         );
       }
     } catch (err) {
-      console.warn('[PostgreSQL] Birlamchi sozlamalarni tekshirishda xatolik:', err.message);
+      console.warn('[Supabase] Birlamchi sozlamalarni tekshirishda xatolik:', err.message);
     }
-  }
-
-  /**
-   * Baza birinchi marta yangilanganda test ma'lumotlarini (bemorlar, qabullar, to'lovlar) bir martalik tozalash.
-   * Bu Render va tashqi bazada to'plangan soxta ma'lumotlarni 0 ga tushirishni ta'minlaydi.
-   * Xodimlar (Menejer hisobi, PIN), shifokorlar, xizmatlar va sozlamalarga TEGILMAYDI!
-   */
-  async cleanTestDataOnce() {
-    try {
-      await this.query(`
-        CREATE TABLE IF NOT EXISTS system_migrations (
-          name VARCHAR(100) PRIMARY KEY,
-          applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-      `);
-
-      const migrationName = 'clean_initial_test_data_2026_10';
-      const checkRes = await this.query(
-        'SELECT name FROM system_migrations WHERE name = $1',
-        [migrationName]
-      );
-
-      if (checkRes.rows.length === 0) {
-        console.log('[PostgreSQL] Baza yangidek holatga keltirilmoqda (test tranzaksiyalari tozalanmoqda)...');
-        await this.withTransaction(async (client) => {
-          await client.query('DELETE FROM payments');
-          await client.query('DELETE FROM appointments');
-          await client.query('DELETE FROM patients');
-          await client.query(
-            "DELETE FROM audit_logs WHERE entity_type IN ('patient', 'appointment', 'payment')"
-          );
-          await client.query(
-            'INSERT INTO system_migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
-            [migrationName]
-          );
-        });
-        console.log('[PostgreSQL] Test tranzaksiyalari muvaffaqiyatli tozalandi! Baza yangi klinika uchun tayyor.');
-      }
-    } catch (err) {
-      console.warn('[PostgreSQL] cleanTestDataOnce bajarilishida xatolik:', err.message);
-    }
-  }
-
-  /**
-   * Admin buyrug'i orqali barcha tranzaksiyalarni (bemorlar, qabullar, to'lovlar) 0 ga tushirish
-   */
-  async cleanAllTransactions() {
-    return this.withTransaction(async (client) => {
-      await client.query('DELETE FROM payments');
-      await client.query('DELETE FROM appointments');
-      await client.query('DELETE FROM patients');
-      await client.query(
-        "DELETE FROM audit_logs WHERE entity_type IN ('patient', 'appointment', 'payment')"
-      );
-      return { success: true };
-    });
   }
 }
 

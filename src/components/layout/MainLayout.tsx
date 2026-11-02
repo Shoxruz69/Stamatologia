@@ -276,7 +276,7 @@ export const MainLayout: React.FC = () => {
                   <Text style={styles.syncAlertTitle}>
                     {serverStatus === 'offline'
                       ? 'Markaziy serverga ulanish kutilmoqda (Offline kesh rejimi)'
-                      : 'PostgreSQL bazasi bilan aloqa uzilgan'}
+                      : 'Supabase bazasi bilan aloqa uzilgan'}
                   </Text>
                   <Text style={styles.syncAlertDesc} numberOfLines={2}>
                     {lastSyncError} — Kiritilgan yangi ma’lumotlar lokal xotirada xavfsiz saqlanmoqda.

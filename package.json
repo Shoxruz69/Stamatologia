@@ -7,8 +7,7 @@
     "dev": "expo start --web",
     "web": "expo start --web",
     "expo:start": "expo start",
-    "build:web": "expo export -p web",
-    "push": "git add -A && git commit -m \"fix(appointments): dynamic 3-day view starting from current Asia/Tashkent date, smooth navigation, and stable modal dates\" && git push origin main"
+    "build:web": "expo export -p web"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.9",
