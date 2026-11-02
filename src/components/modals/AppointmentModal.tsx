@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Appointment, AppointmentStatus, Patient } from '../../types';
-import { formatUzbekPhoneNumber, getTodayDateString, arePhoneNumbersEqual } from '../../utils/formatters';
+import { formatUzbekPhoneNumber, getTodayDateString, extractDateOnly, arePhoneNumbersEqual } from '../../utils/formatters';
 import { Select } from '../common/Input';
 import { UserIcon, PlusIcon, CheckIcon, SparklesIcon, ChevronDownIcon } from '../common/Icons';
 
@@ -9,6 +9,7 @@ interface AppointmentModalProps {
   visible: boolean;
   onClose: () => void;
   appointmentToEdit?: Appointment | null;
+  initialDate?: string | null;
 }
 
 const TIME_SLOTS = [
@@ -54,6 +55,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   visible,
   onClose,
   appointmentToEdit,
+  initialDate,
 }) => {
   const {
     doctors,
@@ -86,7 +88,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const [phone, setPhone] = useState('');
   const [doctorId, setDoctorId] = useState('');
   const [serviceId, setServiceId] = useState('');
-  const [date, setDate] = useState('2026-10-07');
+  const [date, setDate] = useState(() => getTodayDateString());
   const [time, setTime] = useState('09:30');
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(true);
@@ -120,7 +122,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         setPhone(appointmentToEdit.patientPhone ? formatUzbekPhoneNumber(appointmentToEdit.patientPhone) : '');
         setDoctorId(appointmentToEdit.doctorId || (doctors[0]?.id || ''));
         setServiceId(appointmentToEdit.serviceId || (services[0]?.id || ''));
-        setDate(appointmentToEdit.date || getTodayDateString());
+        setDate(extractDateOnly(appointmentToEdit.date) || getTodayDateString());
         setTime(appointmentToEdit.time || '09:30');
         setNotes(appointmentToEdit.notes || '');
         setPatientMode('existing');
@@ -134,7 +136,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         setNewPatientGender('Erkak');
         setDoctorId(doctors[0]?.id || '');
         setServiceId(services[0]?.id || '');
-        setDate(getTodayDateString());
+        setDate(initialDate ? extractDateOnly(initialDate) : getTodayDateString());
         setTime('09:30');
         setNotes('');
         setPatientMode('existing');
@@ -264,6 +266,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
     const savedTime = timeValidation.normalized;
     setTime(savedTime);
+    const cleanDate = extractDateOnly(date) || date;
 
     const currentDoc = doctors.find((d) => d.id === doctorId);
     const currentSrv = services.find((s) => s.id === serviceId);
@@ -288,7 +291,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           serviceId,
           serviceName: currentSrv ? currentSrv.name : appointmentToEdit.serviceName,
           servicePrice: currentSrv ? currentSrv.price : appointmentToEdit.servicePrice,
-          date,
+          date: cleanDate,
           time: savedTime,
           notes: notes.trim(),
         });
@@ -328,7 +331,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           serviceId,
           serviceName: currentSrv?.name || 'Xizmat',
           servicePrice: currentSrv?.price || 0,
-          date,
+          date: cleanDate,
           time: savedTime,
           durationMinutes: currentSrv?.durationMinutes || 30,
           status: initialStatus,
@@ -363,7 +366,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           serviceId,
           serviceName: currentSrv?.name || 'Xizmat',
           servicePrice: currentSrv?.price || 0,
-          date,
+          date: cleanDate,
           time: savedTime,
           durationMinutes: currentSrv?.durationMinutes || 30,
           status: 'Kutilmoqda',

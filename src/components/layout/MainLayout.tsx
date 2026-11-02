@@ -69,6 +69,7 @@ export const MainLayout: React.FC = () => {
   // Modallar holati
   const [aptModalVisible, setAptModalVisible] = useState(false);
   const [aptToEdit, setAptToEdit] = useState<Appointment | null>(null);
+  const [aptInitialDate, setAptInitialDate] = useState<string | null>(null);
 
   const [patientModalVisible, setPatientModalVisible] = useState(false);
   const [patientToEdit, setPatientToEdit] = useState<Patient | null>(null);
@@ -119,12 +120,14 @@ export const MainLayout: React.FC = () => {
       case 'appointments':
         return (
           <AppointmentsScreen
-            onOpenNewModal={() => {
+            onOpenNewModal={(defaultDate) => {
               setAptToEdit(null);
+              setAptInitialDate(defaultDate || null);
               setAptModalVisible(true);
             }}
             onEditAppointment={(apt) => {
               setAptToEdit(apt);
+              setAptInitialDate(null);
               setAptModalVisible(true);
             }}
             onOpenPatientDetail={(patientId) => {
@@ -302,6 +305,7 @@ export const MainLayout: React.FC = () => {
         visible={aptModalVisible}
         onClose={() => setAptModalVisible(false)}
         appointmentToEdit={aptToEdit}
+        initialDate={aptInitialDate}
       />
 
       <PatientModal

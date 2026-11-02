@@ -101,10 +101,28 @@ export const getDayWeekdayName = (dateString?: string): string => {
   return '';
 };
 
+// Bugungi sana (YYYY-MM-DD) - O'zbekiston (Asia/Tashkent, UTC+5) vaqti bo'yicha
+export const getTashkentTodayDateString = (): string => {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tashkent',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(new Date());
+  } catch {
+    const d = new Date();
+    // UTC vaqtiga Tashkent (UTC+5) qo'shamiz
+    const utc = d.getTime() + d.getTimezoneOffset() * 60000;
+    const tashkentDate = new Date(utc + 5 * 3600000);
+    return toDateString(tashkentDate);
+  }
+};
+
 // Bugungi sana (YYYY-MM-DD)
 export const getTodayDateString = (): string => {
-  const d = new Date();
-  return toDateString(d);
+  return getTashkentTodayDateString();
 };
 
 // Sana satridan faqat YYYY-MM-DD qismini xavfsiz ajratib olish

@@ -20,10 +20,17 @@ import {
 import { Select } from '../components/common/Input';
 import { Modal } from '../components/common/Modal';
 import { AppointmentStatusModal } from '../components/modals/AppointmentStatusModal';
-import { formatDate, formatCurrency } from '../utils/formatters';
+import {
+  formatDate,
+  formatCurrency,
+  getTodayDateString,
+  addDays,
+  parseDateParts,
+  extractDateOnly,
+} from '../utils/formatters';
 
 interface AppointmentsScreenProps {
-  onOpenNewModal: () => void;
+  onOpenNewModal: (initialDate?: string) => void;
   onEditAppointment: (apt: Appointment) => void;
   onOpenPatientDetail: (patientId: string) => void;
 }
@@ -43,37 +50,37 @@ const UZ_DAYS_UPPER = [
   'SHANBA',
 ];
 
-// Sanani kunlar miqdoriga siljitish
+// Sanani kunlar miqdoriga siljitish (timezone vaqt o'zgarishlarisiz)
 const shiftDateString = (dateStr: string, days: number): string => {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dateObj = new Date(y, m - 1, d);
-  dateObj.setDate(dateObj.getDate() + days);
-  const nextY = dateObj.getFullYear();
-  const nextM = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const nextD = String(dateObj.getDate()).padStart(2, '0');
-  return `${nextY}-${nextM}-${nextD}`;
+  return addDays(dateStr, days);
 };
 
-// Kun ustuni sarlavhasi ma'lumotlari (CHORSHANBA, 7-oktabr)
+// Kun ustuni sarlavhasi ma'lumotlari (masalan: DUSHANBA, 2-noyabr)
 const getDayHeaderInfo = (dateStr: string) => {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dateObj = new Date(y, m - 1, d);
-  const weekdayUpper = UZ_DAYS_UPPER[dateObj.getDay()];
-  const dayDate = `${d}-${UZ_MONTHS[m - 1]}`;
-  return { weekdayUpper, dayDate };
+  const clean = extractDateOnly(dateStr);
+  const parts = parseDateParts(clean);
+  if (parts) {
+    const dateObj = new Date(parts.year, parts.month - 1, parts.day, 12, 0, 0);
+    const weekdayUpper = UZ_DAYS_UPPER[dateObj.getDay()];
+    const dayDate = `${parts.day}-${UZ_MONTHS[parts.month - 1]}`;
+    return { weekdayUpper, dayDate };
+  }
+  return { weekdayUpper: '', dayDate: dateStr };
 };
 
-// 3 kunlik sana oralig'i sarlavhasi (masalan, 7–9 oktabr 2026)
+// 3 kunlik sana oralig'i sarlavhasi (masalan, 2–4 noyabr 2026)
 const getDateRangeTitle = (startStr: string, endStr: string): string => {
-  const [y1, m1, d1] = startStr.split('-').map(Number);
-  const [y3, m3, d3] = endStr.split('-').map(Number);
-  if (m1 === m3 && y1 === y3) {
-    return `${d1}–${d3} ${UZ_MONTHS[m1 - 1]} ${y1}`;
+  const p1 = parseDateParts(startStr);
+  const p3 = parseDateParts(endStr);
+  if (!p1 || !p3) return `${startStr} – ${endStr}`;
+
+  if (p1.month === p3.month && p1.year === p3.year) {
+    return `${p1.day}–${p3.day} ${UZ_MONTHS[p1.month - 1]} ${p1.year}`;
   }
-  if (y1 === y3) {
-    return `${d1}-${UZ_MONTHS[m1 - 1]} – ${d3}-${UZ_MONTHS[m3 - 1]} ${y1}`;
+  if (p1.year === p3.year) {
+    return `${p1.day}-${UZ_MONTHS[p1.month - 1]} – ${p3.day}-${UZ_MONTHS[p3.month - 1]} ${p1.year}`;
   }
-  return `${d1}-${UZ_MONTHS[m1 - 1]} ${y1} – ${d3}-${UZ_MONTHS[m3 - 1]} ${y3}`;
+  return `${p1.day}-${UZ_MONTHS[p1.month - 1]} ${p1.year} – ${p3.day}-${UZ_MONTHS[p3.month - 1]} ${p3.year}`;
 };
 
 // Holat ranglari
@@ -119,8 +126,13 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   const { width } = useWindowDimensions();
   const isMobile = width < 860;
 
-  // 1. Joriy 3 kunlik ko'rinish boshlanish sanasi (Namunada 2026-10-07)
-  const [startDate, setStartDate] = useState<string>('2026-10-07');
+  // 1. Joriy 3 kunlik ko'rinish boshlanish sanasi (Bugungi kun: Asia/Tashkent)
+  const [startDate, setStartDate] = useState<string>(() => getTodayDateString());
+
+  // Sahifa birinchi marta ochilganda yoki qayta yuklanganda bugungi sanadan boshlash
+  useEffect(() => {
+    setStartDate(getTodayDateString());
+  }, []);
 
   // Filtrlar
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
@@ -419,38 +431,6 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
     setCursorPos({ x: clientX, y: clientY });
   };
 
-  // Tahrirlangan qabulni kuzatish (agar sanasi o'zgarsa, ushbu sanani jadvalda ko'rsatish uchun)
-  const lastEditedAptRef = useRef<{ id: string; prevDate: string } | null>(null);
-
-  // Tahrirlash oynasida sana o'zgartirilib saqlansa yoki yangi qabul qo'shilsa, jadvalni yangi sana ko'rinadigan qilib siljitish
-  const prevAppointmentsLengthRef = useRef(appointments.length);
-  useEffect(() => {
-    if (lastEditedAptRef.current) {
-      const updatedApt = appointments.find((a) => a.id === lastEditedAptRef.current?.id);
-      if (updatedApt && updatedApt.date !== lastEditedAptRef.current.prevDate) {
-        const targetDate = updatedApt.date;
-        if (!currentThreeDays.includes(targetDate)) {
-          if (targetDate <= '2026-10-06') {
-            setStartDate('2026-10-04');
-          } else if (targetDate <= '2026-10-09') {
-            setStartDate('2026-10-07');
-          } else if (targetDate <= '2026-10-12') {
-            setStartDate('2026-10-10');
-          } else {
-            setStartDate(targetDate);
-          }
-        }
-      }
-      lastEditedAptRef.current = null;
-    } else if (appointments.length > prevAppointmentsLengthRef.current) {
-      const newestApt = appointments[0];
-      if (newestApt && !currentThreeDays.includes(newestApt.date)) {
-        setStartDate(newestApt.date);
-      }
-    }
-    prevAppointmentsLengthRef.current = appointments.length;
-  }, [appointments, currentThreeDays]);
-
   // ============================================================
   // QABUL KARTASINI BOSGANDA TAHRIRLASH OYNASINI OCHISH
   // ============================================================
@@ -458,14 +438,8 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
     // Agar sudrab tashlangan bo'lsa, tahrirlash ochilmaydi
     if (justDraggedRef.current || dragTrackerRef.current.isDragging) return;
 
-    lastEditedAptRef.current = { id: apt.id, prevDate: apt.date };
     onEditAppointment(apt);
   };
-
-  // Navigatsiya tugmasi matnlari
-  const isFirstPage = startDate === '2026-10-07';
-  const leftSubText = isFirstPage ? 'Oldingi 3 kun' : 'Keyingi 3 kun';
-  const rightLabelText = isFirstPage ? 'Keyingi 3 kun' : 'Oldingi 3 kun';
 
   return (
     <View style={styles.outerContainer}>
@@ -480,14 +454,15 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
         {/* YAGONA IXCHAM BOSHQARUV QATORI (Mockupga 100% mos)           */}
         {/* ============================================================ */}
         <View style={styles.unifiedTopBar}>
-          {/* Chap guruh: Qabullar, 3 kunlik ko'rinish, Shifokor, Holat, Jami, (<), 7–9 oktabr */}
+          {/* Chap guruh: Qabullar, 3 kunlik ko'rinish, Shifokor, Holat, Jami, (<), sana oralig'i */}
           <View style={styles.unifiedLeftGroup}>
-            {/* 1. Qabullar pill */}
+            {/* 1. Qabullar pill (bosilganda filtrlarni tozalab, bugungi kunga qaytadi) */}
             <TouchableOpacity
               style={styles.qabullarPill}
               onPress={() => {
                 setSelectedDoctorId('');
                 setSelectedStatus('');
+                setStartDate(getTodayDateString());
               }}
               activeOpacity={0.8}
             >
@@ -549,7 +524,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
               <ChevronLeftIcon size={14} color="#0F172A" />
             </TouchableOpacity>
 
-            {/* 7. Sana oralig'i sarlavhasi (7–9 oktabr 2026) */}
+            {/* 7. Sana oralig'i sarlavhasi (masalan, 2–4 noyabr 2026) */}
             <Text style={styles.dateRangeText}>{dateRangeTitle}</Text>
           </View>
 
@@ -558,7 +533,12 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
             {/* + Yangi qabul tugmasi */}
             <TouchableOpacity
               style={styles.newAptCompactBtn}
-              onPress={onOpenNewModal}
+              onPress={() => {
+                const defaultDate = currentThreeDays.includes(getTodayDateString())
+                  ? getTodayDateString()
+                  : startDate;
+                onOpenNewModal(defaultDate);
+              }}
               activeOpacity={0.85}
             >
               <Text style={styles.newAptCompactBtnText}>+ Yangi qabul</Text>
