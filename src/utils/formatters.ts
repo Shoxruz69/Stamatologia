@@ -1,17 +1,33 @@
 // Valyutani o'zbek so'mida chiroyli formatlash
-export const formatCurrency = (amount: number | undefined | null): string => {
-  if (amount === undefined || amount === null || isNaN(amount)) {
+export const formatCurrency = (amount: any): string => {
+  if (amount === undefined || amount === null) {
     return '0 so‘m';
   }
+  let cleanNum: number;
+  if (typeof amount === 'number') {
+    cleanNum = amount;
+  } else {
+    const s = String(amount).trim().replace(/\s+/g, '');
+    cleanNum = Number(s);
+  }
+
+  if (isNaN(cleanNum) || !isFinite(cleanNum)) {
+    return '0 so‘m';
+  }
+
   // Butun son sifatida yaxlitlash (floating-point xatolarini oldini olish)
-  const integerAmount = Math.round(amount);
-  const formatted = integerAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const integerAmount = Math.round(cleanNum);
+  const str = Math.abs(integerAmount) >= 1e15 ? '0' : integerAmount.toString();
+  const formatted = str.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return `${formatted} so‘m`;
 };
 
 // Oddiy raqam formatlash (masalan, 1 250)
-export const formatNumber = (num: number): string => {
-  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+export const formatNumber = (num: any): string => {
+  if (num === undefined || num === null) return '0';
+  const clean = typeof num === 'number' ? num : Number(String(num).replace(/\s+/g, ''));
+  if (isNaN(clean) || !isFinite(clean)) return '0';
+  return Math.round(clean).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 };
 
 export const UZ_MONTHS = [
@@ -262,8 +278,8 @@ export const generateDateRangeChartPoints = (
     return [
       {
         label,
-        revenue: dayPays.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
-        payments: dayPays.reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+        revenue: dayPays.reduce((acc, p) => acc + (Number(p.totalAmount) || 0), 0),
+        payments: dayPays.reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
       },
     ];
   }
@@ -282,8 +298,8 @@ export const generateDateRangeChartPoints = (
 
       points.push({
         label,
-        revenue: dayPays.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
-        payments: dayPays.reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+        revenue: dayPays.reduce((acc, p) => acc + (Number(p.totalAmount) || 0), 0),
+        payments: dayPays.reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
       });
     }
     return points;
@@ -322,8 +338,8 @@ export const generateDateRangeChartPoints = (
 
     points.push({
       label,
-      revenue: binPays.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
-      payments: binPays.reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+      revenue: binPays.reduce((acc, p) => acc + (Number(p.totalAmount) || 0), 0),
+      payments: binPays.reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     });
   }
 

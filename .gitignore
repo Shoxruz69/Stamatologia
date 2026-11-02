@@ -18,6 +18,7 @@ sms-config.json
 *.key
 dump*.json
 backup*.json
+scratch/
 
 # Logs
 *.log

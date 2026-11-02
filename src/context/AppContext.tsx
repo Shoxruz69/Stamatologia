@@ -97,9 +97,9 @@ interface AppContextType {
   deleteDoctor: (id: string) => boolean;
 
   // Bemorlar amallari
-  addPatient: (patient: Omit<Patient, 'id' | 'totalVisits' | 'createdAt'>) => Patient;
-  updatePatient: (id: string, patient: Partial<Patient>) => boolean;
-  deletePatient: (id: string) => boolean;
+  addPatient: (patient: Omit<Patient, 'id' | 'totalVisits' | 'createdAt'>) => Promise<Patient>;
+  updatePatient: (id: string, patient: Partial<Patient>) => Promise<boolean>;
+  deletePatient: (id: string) => Promise<boolean>;
 
   // Qabullar amallari
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt' | 'paidAmount'>) => {
@@ -238,7 +238,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (err: any) {
         console.warn(`Sinxronlash navbat elementi (${item.entity}:${item.entityId}) xatosi:`, err);
-        remaining.push(item);
+        const attempts = (item.attempts || 0) + 1;
+        const isClientConflict = err?.status === 409 || err?.status === 404 || err?.code === 'DUPLICATE_PHONE';
+        if (!isClientConflict && attempts < 3) {
+          remaining.push({ ...item, attempts, lastError: err.message });
+        }
       }
     }
 
@@ -335,7 +339,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
             const merged: Patient[] = [
               ...unmergedPending,
-              ...serverPatients.map((p) => ({ ...p, syncStatus: 'synced' as SyncStatus })),
+              ...serverPatients.map((p) => ({
+                ...p,
+                debt: Number(p.debt) || 0,
+                totalVisits: Number(p.totalVisits) || 0,
+                syncStatus: 'synced' as SyncStatus,
+              })),
             ];
             savePatients(merged);
             return merged;
@@ -349,7 +358,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const unmergedPending = pending.filter((a) => !serverIds.has(a.id));
             const merged: Appointment[] = [
               ...unmergedPending,
-              ...serverAppointments.map((a) => ({ ...a, syncStatus: 'synced' as SyncStatus })),
+              ...serverAppointments.map((a) => ({
+                ...a,
+                servicePrice: Number(a.servicePrice) || 0,
+                paidAmount: Number(a.paidAmount) || 0,
+                durationMinutes: Number(a.durationMinutes) || 30,
+                syncStatus: 'synced' as SyncStatus,
+              })),
             ];
             saveAppointments(merged);
             return merged;
@@ -363,7 +378,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const unmergedPending = pending.filter((p) => !serverIds.has(p.id));
             const merged: Payment[] = [
               ...unmergedPending,
-              ...serverPayments.map((p) => ({ ...p, syncStatus: 'synced' as SyncStatus })),
+              ...serverPayments.map((p) => ({
+                ...p,
+                totalAmount: Number(p.totalAmount) || 0,
+                paidAmount: Number(p.paidAmount) || 0,
+                debtAmount: Number(p.debtAmount) || 0,
+                syncStatus: 'synced' as SyncStatus,
+              })),
             ];
             savePayments(merged);
             return merged;
@@ -391,7 +412,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const unmergedPending = pending.filter((s) => !serverIds.has(s.id));
             const merged: Service[] = [
               ...unmergedPending,
-              ...serverServices.map((s) => ({ ...s, syncStatus: 'synced' as SyncStatus })),
+              ...serverServices.map((s) => ({
+                ...s,
+                price: Number(s.price) || 0,
+                durationMinutes: Number(s.durationMinutes) || 30,
+                syncStatus: 'synced' as SyncStatus,
+              })),
             ];
             saveServices(merged);
             return merged;
@@ -704,143 +730,176 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // --- BEMORLAR ---
-  const addPatient = (data: Omit<Patient, 'id' | 'totalVisits' | 'createdAt'>): Patient => {
+  const addPatient = async (data: Omit<Patient, 'id' | 'totalVisits' | 'createdAt'>): Promise<Patient> => {
     const normalizedPhone = data.phone ? formatUzbekPhoneNumber(data.phone) : '';
 
     // Telefon takroriyligini tekshirish (faqat telefon raqam kiritilgan bo'lsa)
     if (normalizedPhone) {
       const existingWithSamePhone = patients.find((p) => arePhoneNumbersEqual(p.phone, normalizedPhone));
       if (existingWithSamePhone) {
-        showToast(
-          `Ushbu telefon raqam (${normalizedPhone}) bilan "${existingWithSamePhone.fullName}" allaqachon mavjud!`,
-          'error',
-          'Bemor allaqachon ro‘yxatda mavjud'
-        );
-        return existingWithSamePhone;
+        const msg = `Ushbu telefon raqam (${normalizedPhone}) bilan "${existingWithSamePhone.fullName}" allaqachon mavjud!`;
+        showToast(msg, 'error', 'Bemor allaqachon ro‘yxatda mavjud');
+        throw new Error(msg);
       }
     }
+
+    const id = `pat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const debtVal = typeof data.debt === 'number' ? data.debt : Number(String(data.debt || 0).replace(/\s+/g, '')) || 0;
 
     const newPat: Patient = {
       ...data,
       phone: normalizedPhone || data.phone || '',
-      id: `pat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id,
       totalVisits: 0,
       createdAt: new Date().toISOString().split('T')[0],
-      debt: data.debt || 0,
-      syncStatus: 'pending',
+      debt: debtVal,
+      syncStatus: 'synced',
     };
 
-    setPatients((prev) => {
-      const updated = [newPat, ...prev];
-      savePatients(updated);
-      return updated;
-    });
+    try {
+      const serverPat = await apiClient.createPatient(newPat);
+      const finalPatient: Patient = {
+        ...(serverPat || newPat),
+        debt: Number(serverPat?.debt ?? debtVal) || 0,
+        totalVisits: Number(serverPat?.totalVisits ?? 0) || 0,
+        syncStatus: 'synced',
+      };
 
-    apiClient
-      .createPatient(newPat)
-      .then((serverPat) => {
-        setPatients((prev) => {
-          const synced = prev.map((p) =>
-            p.id === newPat.id ? { ...(serverPat || p), syncStatus: 'synced' as SyncStatus } : p
-          );
-          savePatients(synced);
-          return synced;
-        });
-        showToast(`Bemor "${newPat.fullName}" markaziy bazaga saqlandi!`);
-      })
-      .catch((err) => {
-        // MUHIM: Tarmoq uzilganda ma'lumotni HECH QACHON O'CHIRMAYMIZ!
+      setPatients((prev) => {
+        const updated = [finalPatient, ...prev.filter((p) => p.id !== finalPatient.id)];
+        savePatients(updated);
+        return updated;
+      });
+
+      setDbStatus('connected');
+      showToast(`Bemor "${finalPatient.fullName}" muvaffaqiyatli qo‘shildi!`, 'success');
+      return finalPatient;
+    } catch (err: any) {
+      const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      if (isOffline) {
+        const offlinePat: Patient = { ...newPat, syncStatus: 'pending' };
         enqueueSyncItem({
           id: `sync-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           entity: 'patient',
-          entityId: newPat.id,
+          entityId: offlinePat.id,
           action: 'create',
-          data: newPat,
-          timestamp: Date.now(),
+          data: offlinePat,
+          createdAt: new Date().toISOString(),
+          attempts: 0,
+        });
+        setPatients((prev) => {
+          const updated = [offlinePat, ...prev.filter((p) => p.id !== offlinePat.id)];
+          savePatients(updated);
+          return updated;
         });
         setDbStatus('disconnected');
-        showToast(
-          `Aloqa yo‘q: Bemor "${newPat.fullName}" qurilmada saqlandi. Aloqa tiklanganda markaziy bazaga avtomatik yuboriladi.`,
-          'info',
-          'Sinxronlash kutilmoqda'
-        );
-      });
+        showToast('Internet yo‘q: Bemor qurilmada saqlandi (Aloqa qaytgach bazaga yuboriladi).', 'info');
+        return offlinePat;
+      }
 
-    return newPat;
+      const errMsg = err?.message || 'Bemorni saqlashda server xatoligi yuz berdi';
+      showToast(errMsg, 'error');
+      throw err;
+    }
   };
 
-  const updatePatient = (id: string, data: Partial<Patient>) => {
+  const updatePatient = async (id: string, data: Partial<Patient>): Promise<boolean> => {
     let normData = { ...data };
     if (data.phone) {
       normData.phone = formatUzbekPhoneNumber(data.phone);
-      // Telefon dublikati tekshirish (o'zidan boshqa bemorlar bilan)
       const existing = patients.find((p) => p.id !== id && arePhoneNumbersEqual(p.phone, normData.phone));
       if (existing) {
-        showToast(
-          `Ushbu telefon (${normData.phone}) bilan boshqa bemor ("${existing.fullName}") mavjud!`,
-          'error',
-          'Telefon raqam band'
-        );
+        const msg = `Ushbu telefon (${normData.phone}) bilan boshqa bemor ("${existing.fullName}") mavjud!`;
+        showToast(msg, 'error', 'Telefon raqam band');
         return false;
       }
     }
 
-    setPatients((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, ...normData, syncStatus: 'pending' as SyncStatus } : p));
-      savePatients(updated);
-      return updated;
-    });
-
-    apiClient
-      .updatePatient(id, normData)
-      .then((serverPat) => {
+    try {
+      const serverPat = await apiClient.updatePatient(id, normData);
+      setPatients((prev) => {
+        const updated = prev.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                ...(serverPat || normData),
+                debt: Number((serverPat || normData).debt ?? p.debt) || 0,
+                totalVisits: Number((serverPat || normData).totalVisits ?? p.totalVisits) || 0,
+                syncStatus: 'synced' as SyncStatus,
+              }
+            : p
+        );
+        savePatients(updated);
+        return updated;
+      });
+      showToast('Bemor ma’lumotlari muvaffaqiyatli yangilandi!', 'success');
+      return true;
+    } catch (err: any) {
+      const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      if (isOffline) {
         setPatients((prev) => {
-          const synced = prev.map((p) => (p.id === id ? { ...(serverPat || p), syncStatus: 'synced' as SyncStatus } : p));
-          savePatients(synced);
-          return synced;
+          const updated = prev.map((p) => (p.id === id ? { ...p, ...normData, syncStatus: 'pending' as SyncStatus } : p));
+          savePatients(updated);
+          return updated;
         });
-        showToast('Bemor ma’lumotlari muvaffaqiyatli yangilandi!');
-      })
-      .catch((err) => {
         enqueueSyncItem({
           id: `sync-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           entity: 'patient',
           entityId: id,
           action: 'update',
           data: normData,
-          timestamp: Date.now(),
+          createdAt: new Date().toISOString(),
+          attempts: 0,
         });
         setDbStatus('disconnected');
-        showToast('Aloqa yo‘q: Bemor o‘zgarishi qurilmada saqlandi (Sinxronlash kutilmoqda).', 'info');
-      });
-
-    return true;
+        showToast('Internet yo‘q: Bemor o‘zgarishi qurilmada saqlandi.', 'info');
+        return true;
+      }
+      showToast(`Bemor ma’lumotlarini saqlashda xatolik: ${err.message}`, 'error');
+      return false;
+    }
   };
 
-  const deletePatient = (id: string) => {
-    setPatients((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      savePatients(updated);
-      return updated;
-    });
-
-    apiClient
-      .deletePatient(id)
-      .then(() => {
-        showToast('Bemor o‘chirildi!', 'info');
-      })
-      .catch(() => {
+  const deletePatient = async (id: string): Promise<boolean> => {
+    try {
+      await apiClient.deletePatient(id);
+      setPatients((prev) => {
+        const updated = prev.filter((p) => p.id !== id);
+        savePatients(updated);
+        return updated;
+      });
+      // Navbatda shu bemorga tegishli eski amallar bo'lsa tozalab tashlaymiz
+      const q = loadSyncQueue();
+      const filteredQ = q.filter((item) => item.entityId !== id);
+      if (filteredQ.length !== q.length) {
+        saveSyncQueue(filteredQ);
+        setPendingSyncCount(filteredQ.length);
+      }
+      showToast('Bemor muvaffaqiyatli o‘chirildi!', 'info');
+      return true;
+    } catch (err: any) {
+      const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      if (isOffline) {
+        setPatients((prev) => {
+          const updated = prev.filter((p) => p.id !== id);
+          savePatients(updated);
+          return updated;
+        });
         enqueueSyncItem({
           id: `sync-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           entity: 'patient',
           entityId: id,
           action: 'delete',
-          timestamp: Date.now(),
+          data: null,
+          createdAt: new Date().toISOString(),
+          attempts: 0,
         });
-        showToast('Bemor o‘chirildi (Sinxronlash kutilmoqda)', 'info');
-      });
-
-    return true;
+        showToast('Internet yo‘q: Bemor qurilmadan o‘chirildi (Server bilan aloqa tiklanganda o‘chiriladi).', 'info');
+        return true;
+      }
+      showToast(`Bemorni o‘chirib bo‘lmadi: ${err.message}`, 'error');
+      throw err;
+    }
   };
 
   // --- QABULLAR (CONFLICT CHECK BILAN) ---

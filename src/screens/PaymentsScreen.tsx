@@ -63,15 +63,15 @@ export const PaymentsScreen: React.FC<PaymentsScreenProps> = ({
 
   // Moliyaviy xulosa
   const totalReceived = useMemo(
-    () => payments.filter((p) => p.status !== 'Qaytarilgan').reduce((acc, p) => acc + p.paidAmount, 0),
+    () => payments.filter((p) => p.status !== 'Qaytarilgan').reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     [payments]
   );
   const totalDebtBalance = useMemo(
-    () => payments.filter((p) => p.status !== 'Qaytarilgan').reduce((acc, p) => acc + (p.debtAmount || 0), 0),
+    () => payments.filter((p) => p.status !== 'Qaytarilgan').reduce((acc, p) => acc + (Number(p.debtAmount) || 0), 0),
     [payments]
   );
   const totalRefunded = useMemo(
-    () => payments.filter((p) => p.status === 'Qaytarilgan').reduce((acc, p) => acc + p.paidAmount, 0),
+    () => payments.filter((p) => p.status === 'Qaytarilgan').reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     [payments]
   );
 

@@ -1,7 +1,13 @@
-require('dotenv').config();
-const fs = require('fs');
 const path = require('path');
-const { Pool } = require('pg');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const fs = require('fs');
+const { Pool, types } = require('pg');
+
+// PostgreSQL BIGINT (int8) va NUMERIC turlarini JavaScript soniga (Number) aylantirish
+// Bu orqali satrlar qo'shilib ketishi va "5.00 000 025e+58" kabi eksponentsial xatolar butunlay bartaraf etiladi
+types.setTypeParser(20, (val) => (val === null ? 0 : parseInt(val, 10)));
+types.setTypeParser(1700, (val) => (val === null ? 0 : parseFloat(val)));
+
 const { hashPin } = require('./cryptoUtils');
 
 class DatabaseManager {

@@ -208,7 +208,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -311,7 +311,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       if (patientMode === 'new') {
         const normNewPhone = formatUzbekPhoneNumber(newPatientPhone);
         // 1. Yangi bemorni bazaga ro'yxatdan o'tkazish
-        const createdPatient = addPatient({
+        const createdPatient = await addPatient({
           fullName: newPatientFullName.trim(),
           phone: normNewPhone || newPatientPhone.trim(),
           gender: newPatientGender,
@@ -380,6 +380,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           setErrors({ form: res.error });
         }
       }
+    } catch (err: any) {
+      setErrors({ form: err?.message || 'Qabulni saqlashda xatolik yuz berdi' });
+      showToast(err?.message || 'Qabulni saqlashda xatolik yuz berdi', 'error');
     } finally {
       setIsSubmitting(false);
     }

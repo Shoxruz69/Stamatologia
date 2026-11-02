@@ -167,10 +167,8 @@ export const Header: React.FC<HeaderProps> = ({
             {isSyncing
               ? 'Sinxronlanmoqda...'
               : dbStatus === 'connected'
-                ? pendingSyncCount > 0
-                  ? `Supabase (${pendingSyncCount})`
-                  : 'Supabase'
-                : 'Supabase uzilgan'}
+                ? 'Supabase: Ulangan'
+                : 'Supabase: Ulanmagan'}
           </Text>
         </TouchableOpacity>
 

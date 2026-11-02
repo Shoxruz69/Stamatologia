@@ -598,7 +598,12 @@ async function handleApiRequest(req, res, pathname, queryParams) {
                 TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdAt"
          FROM patients ORDER BY created_at DESC`
       );
-      return sendJson(res, 200, { ok: true, patients: result.rows });
+      const mapped = result.rows.map((r) => ({
+        ...r,
+        debt: Number(r.debt) || 0,
+        totalVisits: Number(r.totalVisits) || 0,
+      }));
+      return sendJson(res, 200, { ok: true, patients: mapped });
     } catch (err) {
       return sendError(res, 500, err.message);
     }
@@ -621,7 +626,12 @@ async function handleApiRequest(req, res, pathname, queryParams) {
         [id]
       );
       if (existingById.rows.length > 0) {
-        return sendJson(res, 200, { ok: true, patient: existingById.rows[0], deduplicated: true });
+        const p = existingById.rows[0];
+        return sendJson(res, 200, {
+          ok: true,
+          patient: { ...p, debt: Number(p.debt) || 0, totalVisits: Number(p.totalVisits) || 0 },
+          deduplicated: true,
+        });
       }
 
       // 2. Telefon raqamini normalizatsiya qilish va dublikat tekshirish
@@ -661,7 +671,11 @@ async function handleApiRequest(req, res, pathname, queryParams) {
         details: { name: body.fullName, phone: normPhone || body.phone },
       });
 
-      return sendJson(res, 201, { ok: true, patient: result.rows[0] });
+      const saved = result.rows[0];
+      return sendJson(res, 201, {
+        ok: true,
+        patient: { ...saved, debt: Number(saved.debt) || 0, totalVisits: Number(saved.totalVisits) || 0 },
+      });
     } catch (err) {
       return sendError(res, 500, err.message);
     }
@@ -728,7 +742,11 @@ async function handleApiRequest(req, res, pathname, queryParams) {
       if (result.rows.length === 0) {
         return sendError(res, 404, 'Bemor topilmadi');
       }
-      return sendJson(res, 200, { ok: true, patient: result.rows[0] });
+      const saved = result.rows[0];
+      return sendJson(res, 200, {
+        ok: true,
+        patient: { ...saved, debt: Number(saved.debt) || 0, totalVisits: Number(saved.totalVisits) || 0 },
+      });
     } catch (err) {
       return sendError(res, 500, err.message);
     }
@@ -736,11 +754,21 @@ async function handleApiRequest(req, res, pathname, queryParams) {
 
   if (pathname.startsWith('/api/patients/') && req.method === 'DELETE') {
     try {
-      const id = pathname.replace('/api/patients/', '');
-      await db.query(`DELETE FROM patients WHERE id = $1`, [id]);
-      return sendJson(res, 200, { ok: true, message: 'Bemor o‘chirildi' });
+      const id = pathname.replace('/api/patients/', '').split('?')[0].replace(/\/$/, '').trim();
+      if (!id) return sendError(res, 400, 'Bemor ID ko‘rsatilmadi');
+
+      await db.withTransaction(async (client) => {
+        // Bemorni o'chirishda chet kalit (foreign key) xatolarini oldini olish:
+        // Unga bog'liq barcha to'lovlar, qabullar va audit loglar bitta tranzaksiyada tozalab o'chiriladi
+        await client.query('DELETE FROM payments WHERE patient_id = $1', [id]);
+        await client.query('DELETE FROM appointments WHERE patient_id = $1', [id]);
+        await client.query("DELETE FROM audit_logs WHERE entity_type = 'patient' AND entity_id = $1", [id]);
+        await client.query('DELETE FROM patients WHERE id = $1', [id]);
+      });
+
+      return sendJson(res, 200, { ok: true, message: 'Bemor muvaffaqiyatli o‘chirildi' });
     } catch (err) {
-      return sendError(res, 500, err.message);
+      return sendError(res, 500, 'Bemorni o‘chirishda xatolik: ' + err.message);
     }
   }
 
@@ -755,7 +783,13 @@ async function handleApiRequest(req, res, pathname, queryParams) {
                 paid_amount AS "paidAmount", TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdAt"
          FROM appointments ORDER BY date DESC, time DESC`
       );
-      return sendJson(res, 200, { ok: true, appointments: result.rows });
+      const mapped = result.rows.map((r) => ({
+        ...r,
+        servicePrice: Number(r.servicePrice) || 0,
+        paidAmount: Number(r.paidAmount) || 0,
+        durationMinutes: Number(r.durationMinutes) || 30,
+      }));
+      return sendJson(res, 200, { ok: true, appointments: mapped });
     } catch (err) {
       return sendError(res, 500, err.message);
     }
@@ -1029,7 +1063,13 @@ async function handleApiRequest(req, res, pathname, queryParams) {
                 receipt_number AS "receiptNumber", TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdAt"
          FROM payments ORDER BY date DESC, time DESC`
       );
-      return sendJson(res, 200, { ok: true, payments: result.rows });
+      const mapped = result.rows.map((r) => ({
+        ...r,
+        totalAmount: Number(r.totalAmount) || 0,
+        paidAmount: Number(r.paidAmount) || 0,
+        debtAmount: Number(r.debtAmount) || 0,
+      }));
+      return sendJson(res, 200, { ok: true, payments: mapped });
     } catch (err) {
       return sendError(res, 500, err.message);
     }

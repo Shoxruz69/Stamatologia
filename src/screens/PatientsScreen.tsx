@@ -49,7 +49,8 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
 
   const filteredPatients = useMemo(() => {
     return patients.filter((p) => {
-      if (filterDebtOnly && (p.debt || 0) <= 0) return false;
+      const patientDebt = Number(p.debt) || 0;
+      if (filterDebtOnly && patientDebt <= 0) return false;
 
       const q = (searchQuery || localSearch).trim().toLowerCase();
       if (q) {
@@ -63,8 +64,13 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
   }, [patients, searchQuery, localSearch, filterDebtOnly]);
 
   const totalPatientsCount = patients.length;
-  const debtorsCount = patients.filter((p) => p.debt > 0).length;
-  const totalDebtSum = patients.reduce((acc, p) => acc + (p.debt || 0), 0);
+  const debtorsCount = useMemo(() => {
+    return patients.filter((p) => (Number(p.debt) || 0) > 0).length;
+  }, [patients]);
+
+  const totalDebtSum = useMemo(() => {
+    return patients.reduce((acc, p) => acc + (Number(p.debt) || 0), 0);
+  }, [patients]);
 
   return (
     <View style={styles.container}>
@@ -206,10 +212,10 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
                   <Text
                     style={[
                       styles.cellDebt,
-                      { color: patient.debt > 0 ? colors.danger : colors.success },
+                      { color: (Number(patient.debt) || 0) > 0 ? colors.danger : colors.success },
                     ]}
                   >
-                    {patient.debt > 0 ? formatCurrency(patient.debt) : 'Qarz yo‘q'}
+                    {(Number(patient.debt) || 0) > 0 ? formatCurrency(patient.debt) : 'Qarz yo‘q'}
                   </Text>
                 </View>
 
@@ -269,10 +275,15 @@ export const PatientsScreen: React.FC<PatientsScreenProps> = ({
         message={`Haqiqatdan ham "${deleteTarget?.fullName}" bemor kartochkasini tizimdan butunlay o‘chirib tashlamoqchimisiz?`}
         confirmText="O‘chirish"
         isDestructive={true}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteTarget) {
-            deletePatient(deleteTarget.id);
+            const targetId = deleteTarget.id;
             setDeleteTarget(null);
+            try {
+              await deletePatient(targetId);
+            } catch (err) {
+              // Xato xabari AppContext showToast orqali ko'rsatiladi
+            }
           }
         }}
         onCancel={() => setDeleteTarget(null)}

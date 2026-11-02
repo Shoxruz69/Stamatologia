@@ -73,7 +73,7 @@ export const AnalyticsScreen: React.FC = () => {
     () =>
       periodPayments
         .filter((p) => p.status !== 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.totalAmount || 0), 0),
+        .reduce((acc, p) => acc + (Number(p.totalAmount) || 0), 0),
     [periodPayments]
   );
 
@@ -81,7 +81,7 @@ export const AnalyticsScreen: React.FC = () => {
     () =>
       periodPayments
         .filter((p) => p.status !== 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+        .reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     [periodPayments]
   );
 
@@ -89,7 +89,7 @@ export const AnalyticsScreen: React.FC = () => {
     () =>
       periodPayments
         .filter((p) => p.status !== 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.debtAmount || 0), 0),
+        .reduce((acc, p) => acc + (Number(p.debtAmount) || 0), 0),
     [periodPayments]
   );
 
@@ -97,7 +97,7 @@ export const AnalyticsScreen: React.FC = () => {
     () =>
       periodPayments
         .filter((p) => p.status === 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+        .reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     [periodPayments]
   );
 
@@ -108,7 +108,7 @@ export const AnalyticsScreen: React.FC = () => {
     () =>
       periodPayments
         .filter((p) => p.paymentMethod === 'Naqd' && p.status !== 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+        .reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     [periodPayments]
   );
 
@@ -116,7 +116,7 @@ export const AnalyticsScreen: React.FC = () => {
     () =>
       periodPayments
         .filter((p) => p.paymentMethod === 'Karta' && p.status !== 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+        .reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     [periodPayments]
   );
 
@@ -124,7 +124,7 @@ export const AnalyticsScreen: React.FC = () => {
     () =>
       periodPayments
         .filter((p) => p.paymentMethod === 'Payme / Click' && p.status !== 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+        .reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     [periodPayments]
   );
 
@@ -132,7 +132,7 @@ export const AnalyticsScreen: React.FC = () => {
     () =>
       periodPayments
         .filter((p) => p.paymentMethod === 'O‘tkazma' && p.status !== 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+        .reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0),
     [periodPayments]
   );
 

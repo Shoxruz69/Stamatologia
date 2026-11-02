@@ -52,7 +52,7 @@ export const PatientModal: React.FC<PatientModalProps> = ({
     setErrors({});
   }, [patientToEdit, visible]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isSubmitting) return;
 
     const newErrors: Record<string, string> = {};
@@ -81,7 +81,7 @@ export const PatientModal: React.FC<PatientModalProps> = ({
     setIsSubmitting(true);
     try {
       if (patientToEdit) {
-        const ok = updatePatient(patientToEdit.id, {
+        const ok = await updatePatient(patientToEdit.id, {
           fullName: fullName.trim(),
           phone: normPhone,
           gender,
@@ -93,7 +93,7 @@ export const PatientModal: React.FC<PatientModalProps> = ({
           onClose();
         }
       } else {
-        const created = addPatient({
+        const created = await addPatient({
           fullName: fullName.trim(),
           phone: normPhone,
           gender,
@@ -107,6 +107,8 @@ export const PatientModal: React.FC<PatientModalProps> = ({
         }
         onClose();
       }
+    } catch (err) {
+      // Xatolik bo'lsa modal yopilmaydi, foydalanuvchi ma'lumotni to'g'rilab qayta urinishi mumkin
     } finally {
       setIsSubmitting(false);
     }

@@ -405,11 +405,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   // 1. Bugungi savdo va tushgan to'lov (Haqiqiy to'lovlar summasi)
   const { todaySalesFormatted, todayPaidFormatted } = useMemo(() => {
     const totalSales = managerTodayPayments.reduce(
-      (acc, p) => acc + (p.totalAmount || 0),
+      (acc, p) => acc + (Number(p.totalAmount) || 0),
       0
     );
     const totalPaid = managerTodayPayments.reduce(
-      (acc, p) => acc + (p.paidAmount || 0),
+      (acc, p) => acc + (Number(p.paidAmount) || 0),
       0
     );
 
@@ -428,7 +428,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           p.date &&
           p.date.startsWith(currentMonthStr)
       )
-      .reduce((acc, p) => acc + (p.paidAmount || 0), 0);
+      .reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0);
   }, [payments, currentMonthStr]);
 
   const monthlyRevenueFormatted = useMemo(() => {
@@ -440,11 +440,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     useMemo(() => {
       const realDebt = payments
         .filter((p) => p.status !== 'Qaytarilgan')
-        .reduce((acc, p) => acc + (p.debtAmount || 0), 0);
+        .reduce((acc, p) => acc + (Number(p.debtAmount) || 0), 0);
 
       const debtorsSet = new Set(
         payments
-          .filter((p) => (p.debtAmount || 0) > 0)
+          .filter((p) => (Number(p.debtAmount) || 0) > 0)
           .map((p) => p.patientId)
       );
 

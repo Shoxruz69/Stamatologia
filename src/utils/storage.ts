@@ -31,10 +31,11 @@ export interface SyncQueueItem {
   entity: 'patient' | 'appointment' | 'payment' | 'doctor' | 'service';
   action: 'create' | 'update' | 'delete';
   entityId: string;
-  data: any;
-  createdAt: string;
-  attempts: number;
+  data?: any;
+  createdAt?: string;
+  attempts?: number;
   lastError?: string;
+  timestamp?: number;
 }
 
 export const loadSyncQueue = (): SyncQueueItem[] => safeGetItem<SyncQueueItem[]>(STORAGE_KEYS.SYNC_QUEUE, []);
@@ -148,7 +149,7 @@ export interface LocalBackupData {
  */
 export const getLocalMigrationPayload = (): LocalBackupData => {
   const data = loadInitialAppData();
-  const totalDebt = (data.patients || []).reduce((sum, p) => sum + (p.debt || 0), 0);
+  const totalDebt = (data.patients || []).reduce((sum, p) => sum + (Number(p.debt) || 0), 0);
 
   return {
     exportedAt: new Date().toISOString(),

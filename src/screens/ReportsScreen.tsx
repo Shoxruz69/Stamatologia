@@ -184,9 +184,9 @@ export const ReportsScreen: React.FC = () => {
           p.debtAmount,
           p.status,
         ]);
-        const total = validPays.reduce((acc, p) => acc + (p.totalAmount || 0), 0);
-        const totalPaid = validPays.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
-        const totalDebt = validPays.reduce((acc, p) => acc + (p.debtAmount || 0), 0);
+        const total = validPays.reduce((acc, p) => acc + (Number(p.totalAmount) || 0), 0);
+        const totalPaid = validPays.reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0);
+        const totalDebt = validPays.reduce((acc, p) => acc + (Number(p.debtAmount) || 0), 0);
 
         return {
           headers: [
@@ -221,8 +221,8 @@ export const ReportsScreen: React.FC = () => {
           p.paymentMethod,
           p.status,
         ]);
-        const total = validPays.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
-        const totalDebt = validPays.reduce((acc, p) => acc + (p.debtAmount || 0), 0);
+        const total = validPays.reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0);
+        const totalDebt = validPays.reduce((acc, p) => acc + (Number(p.debtAmount) || 0), 0);
 
         return {
           headers: [
@@ -244,7 +244,7 @@ export const ReportsScreen: React.FC = () => {
       }
       case 'debts': {
         // Qarzdorlik hisoboti: bemorlarning amaldagi qarzlari
-        const debtorPatients = patients.filter((p) => (p.debt || 0) > 0);
+        const debtorPatients = patients.filter((p) => (Number(p.debt) || 0) > 0);
         const rows = debtorPatients.map((p) => [
           p.fullName,
           p.phone,
@@ -252,7 +252,7 @@ export const ReportsScreen: React.FC = () => {
           p.lastVisitDate ? formatDate(p.lastVisitDate) : '-',
           p.debt,
         ]);
-        const total = debtorPatients.reduce((acc, p) => acc + (p.debt || 0), 0);
+        const total = debtorPatients.reduce((acc, p) => acc + (Number(p.debt) || 0), 0);
 
         return {
           headers: ['Bemor F.I.Sh', 'Telefon', 'Yashash manzili', 'Oxirgi tashrif', 'Qarzdorlik (UZS)'],

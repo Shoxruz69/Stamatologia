@@ -83,7 +83,7 @@ export const DoctorsScreen: React.FC<DoctorsScreenProps> = ({
       const docPays = payments.filter(
         (p) => p.doctorId === doc.id && p.status !== 'Qaytarilgan'
       );
-      const totalRev = docPays.reduce((acc, p) => acc + p.paidAmount, 0);
+      const totalRev = docPays.reduce((acc, p) => acc + (Number(p.paidAmount) || 0), 0);
 
       // 2. Tanlangan sanadagi qabullari (saralangan holda)
       const dayApts = appointments
