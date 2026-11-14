@@ -101,6 +101,8 @@ async function handleApiRequest(req, res, pathname, queryParams) {
         dbError = pingResult?.error || null;
       } else {
         dbError = db.lastError || 'Supabase ulanishi kutilmoqda';
+        // Orqa fonda avtomatik qayta ulanishga harakat qilish
+        db.init().catch(() => {});
       }
     } catch (e) {
       dbError = e.message;

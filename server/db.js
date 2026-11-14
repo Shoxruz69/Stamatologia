@@ -16,6 +16,7 @@ class DatabaseManager {
     this.isConnected = false;
     this.lastError = null;
     this.initPromise = null;
+    this.heartbeatTimer = null;
   }
 
   getPoolConfig() {
@@ -89,6 +90,8 @@ class DatabaseManager {
         console.error(`[Supabase] Supabase bazasiga ulanib bo‘lmadi:`, err.message);
         this.isConnected = false;
         this.lastError = `Supabase bazasiga ulanishda xatolik: ${err.message}. Render muhitida DATABASE_URL to‘g‘ri kiritilganini tekshiring.`;
+        this.initPromise = null;
+        this.startHeartbeat();
         return false;
       }
 
@@ -106,10 +109,41 @@ class DatabaseManager {
         console.error('[Supabase] Boshlang‘ich sozlamalarni tekshirishda xatolik:', seedErr.message);
       }
 
+      this.startHeartbeat();
       return true;
     })();
 
     return this.initPromise;
+  }
+
+  /**
+   * Supabase 24/7 uyg'oq saqlash va avtomatik qayta ulanish taymeri
+   * Supabase bepul tarifida 7 kun harakatsizlikdan so'ng uxlab qoladi (paused bo'ladi).
+   * Har 10 daqiqada SELECT 1 yuborib turish orqali Supabase 24/7 umuman uxlamaydi!
+   */
+  startHeartbeat() {
+    if (this.heartbeatTimer) return;
+
+    this.heartbeatTimer = setInterval(async () => {
+      try {
+        if (this.isReady()) {
+          const client = await this.pool.connect();
+          try {
+            await client.query('SELECT 1 as keep_alive');
+          } finally {
+            client.release();
+          }
+          this.isConnected = true;
+          this.lastError = null;
+        } else {
+          // Agar Supabase vaqtincha uzilgan bo'lsa, avtomatik qayta ulanish
+          this.initPromise = null;
+          await this.init();
+        }
+      } catch (e) {
+        this.initPromise = null;
+      }
+    }, 10 * 60 * 1000); // Har 10 daqiqada
   }
 
   isReady() {
