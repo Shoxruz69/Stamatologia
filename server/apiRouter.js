@@ -86,11 +86,20 @@ async function handleApiRequest(req, res, pathname, queryParams) {
     } catch {}
   }
 
-  // 1. TIZIM VA BAZA HOLATI (Haqiqiy SELECT 1 orqali tekshirish)
-  if (pathname === '/api/health' && req.method === 'GET') {
+  // 1. TIZIM VA BAZA HOLATI (Haqiqiy SELECT 1 orqali tekshirish, GET va HEAD so'rovlarini qo'llab-quvvatlaydi)
+  if (pathname === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')) {
     const pingResult = await db.ping();
     const dbStatus = db.getDbStatus();
     const isDbConnected = pingResult.connected;
+
+    if (req.method === 'HEAD') {
+      res.writeHead(isDbConnected ? 200 : 503, {
+        'Content-Type': 'application/json',
+        'X-Health-Status': isDbConnected ? 'online' : 'offline',
+      });
+      res.end();
+      return;
+    }
 
     return sendJson(res, isDbConnected ? 200 : 503, {
       ok: isDbConnected,

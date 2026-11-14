@@ -2,9 +2,12 @@ name: Render 24/7 Keep-Alive
 
 on:
   schedule:
-    # Har 10 daqiqada Render serveriga tashqi so'rov yuborib turadi
-    - cron: '*/10 * * * *'
+    # Har 5 daqiqada Render serveriga tashqi so'rov yuborib turadi (Render 15 daqiqada uxlaydi)
+    - cron: '*/5 * * * *'
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   ping:
@@ -14,4 +17,6 @@ jobs:
       - name: Ping Render App
         run: |
           echo "Pinging https://dentacare-app.onrender.com/api/health..."
-          curl -s -f -m 30 "https://dentacare-app.onrender.com/api/health" || curl -s -m 30 "https://dentacare-app.onrender.com/" || echo "Ping request sent"
+          curl -sL -f -m 60 -A "GitHubActions-KeepAlive/2.0" "https://dentacare-app.onrender.com/api/health" || \
+          curl -sL -m 60 -A "GitHubActions-KeepAlive/2.0" "https://dentacare-app.onrender.com/" || \
+          echo "Ping request completed"

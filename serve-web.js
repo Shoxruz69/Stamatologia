@@ -331,13 +331,13 @@ server.listen(PORT, '0.0.0.0', async () => {
 function initRenderKeepAlive() {
   const externalUrl = process.env.RENDER_EXTERNAL_URL || 'https://dentacare-app.onrender.com';
   // Render bepul tarifida 15 daqiqa (900s) harakatsizlikdan so'ng uxlaydi.
-  // Har 10 daqiqada (600s) o'ziga tashqi HTTPS so'rov yuborib, uxlash taymerini doim nollab turamiz.
-  const INTERVAL_MS = 10 * 60 * 1000;
+  // Har 4 daqiqada (240s) o'ziga tashqi HTTPS so'rov yuborib, uxlash taymerini doim nollab turamiz.
+  const INTERVAL_MS = 4 * 60 * 1000;
 
-  console.log(`[KeepAlive] 24/7 uyg‘oq saqlash xizmati ishga tushdi: ${externalUrl}`);
+  console.log(`[KeepAlive] 24/7 uyg‘oq saqlash xizmati ishga tushdi: ${externalUrl} (Har 4 daqiqada)`);
 
-  // Dastlabki ping 30 soniyadan so'ng, keyin har 10 daqiqada
-  setTimeout(pingSelf, 30 * 1000);
+  // Dastlabki ping 15 soniyadan so'ng, keyin har 4 daqiqada
+  setTimeout(pingSelf, 15 * 1000);
   setInterval(pingSelf, INTERVAL_MS);
 
   function pingSelf() {
@@ -345,7 +345,15 @@ function initRenderKeepAlive() {
       const targetUrl = `${externalUrl.replace(/\/$/, '')}/api/health`;
       const client = targetUrl.startsWith('https') ? require('https') : require('http');
 
-      const pingReq = client.get(targetUrl, { timeout: 25000 }, (res) => {
+      const options = {
+        timeout: 40000,
+        headers: {
+          'User-Agent': 'DentaCare-KeepAlive/2.0 (Render 24/7 Monitor)',
+          'Accept': 'application/json, text/plain, */*',
+        },
+      };
+
+      const pingReq = client.get(targetUrl, options, (res) => {
         let rawData = '';
         res.on('data', (c) => rawData += c);
         res.on('end', () => {
@@ -355,6 +363,12 @@ function initRenderKeepAlive() {
 
       pingReq.on('error', (err) => {
         console.warn(`[KeepAlive] Ping xabari (${targetUrl}): ${err.message}`);
+        // Asosiy sahifani ham zaxira sifatida tekshirish
+        try {
+          client.get(externalUrl, { timeout: 30000, headers: { 'User-Agent': 'DentaCare-KeepAlive/2.0' } }, (fallbackRes) => {
+            fallbackRes.resume();
+          }).on('error', () => {});
+        } catch {}
       });
 
       pingReq.on('timeout', () => {
