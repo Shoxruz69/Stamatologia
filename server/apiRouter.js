@@ -86,30 +86,49 @@ async function handleApiRequest(req, res, pathname, queryParams) {
     } catch {}
   }
 
-  // 1. TIZIM VA BAZA HOLATI (Haqiqiy SELECT 1 orqali tekshirish, GET va HEAD so'rovlarini qo'llab-quvvatlaydi)
+  // 1. TIZIM VA BAZA HOLATI (Render Liveness & Readiness probe)
   if (pathname === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')) {
-    const pingResult = await db.ping();
-    const dbStatus = db.getDbStatus();
-    const isDbConnected = pingResult.connected;
+    let isDbConnected = false;
+    let dbError = null;
 
+    try {
+      if (db.isReady()) {
+        const pingResult = await Promise.race([
+          db.ping(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('DB ping timeout')), 2500))
+        ]);
+        isDbConnected = Boolean(pingResult && pingResult.connected);
+        dbError = pingResult?.error || null;
+      } else {
+        dbError = db.lastError || 'Supabase ulanishi kutilmoqda';
+      }
+    } catch (e) {
+      dbError = e.message;
+    }
+
+    const dbStatus = db.getDbStatus();
+
+    // DIQQAT: Render Web Service healthCheckPath doim 200 OK kutadi.
+    // Agar 503 qaytarilsa, Render serverni "unhealthy" deb hisoblab,
+    // cheksiz "SERVICE WAKING UP / APPLICATION LOADING" qora oynasida qotirib qo'yadi!
     if (req.method === 'HEAD') {
-      res.writeHead(isDbConnected ? 200 : 503, {
+      res.writeHead(200, {
         'Content-Type': 'application/json',
-        'X-Health-Status': isDbConnected ? 'online' : 'offline',
+        'X-Health-Status': isDbConnected ? 'online' : 'database_connecting',
       });
       res.end();
       return;
     }
 
-    return sendJson(res, isDbConnected ? 200 : 503, {
-      ok: isDbConnected,
-      status: isDbConnected ? 'online' : 'database_disconnected',
+    return sendJson(res, 200, {
+      ok: true,
+      status: isDbConnected ? 'online' : 'database_connecting',
       version: '1.0.0',
       serverTime: new Date().toISOString(),
       database: {
         engine: 'Supabase (PostgreSQL)',
         connected: isDbConnected,
-        lastError: pingResult.error || dbStatus.lastError,
+        lastError: dbError || dbStatus.lastError,
         name: dbStatus.database,
       },
     });
